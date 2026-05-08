@@ -8,6 +8,7 @@ import { ChevronRight, Plus, Search, Download } from "lucide-react";
 import { CountryManagement } from "@/components/admin/CountryManagement";
 import { CurrencyManagement } from "@/components/admin/CurrencyManagement";
 import { LanguageManagement } from "@/components/admin/LanguageManagement";
+import { TimezoneManagement } from "@/components/admin/TimezoneManagement";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
