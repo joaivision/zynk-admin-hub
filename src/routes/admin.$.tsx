@@ -21,6 +21,7 @@ function AdminGenericPage() {
   if (slug === "settings/country") return <CountryManagement />;
   if (slug === "settings/currency") return <CurrencyManagement />;
   if (slug === "settings/language") return <LanguageManagement />;
+  if (slug === "settings/timezone") return <TimezoneManagement />;
 
   const found = findPage(slug);
 
