@@ -10,6 +10,7 @@ import { CurrencyManagement } from "@/components/admin/CurrencyManagement";
 import { LanguageManagement } from "@/components/admin/LanguageManagement";
 import { TimezoneManagement } from "@/components/admin/TimezoneManagement";
 import { StakeholderTypes } from "@/components/admin/StakeholderTypes";
+import { IndustryTags } from "@/components/admin/IndustryTags";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
@@ -24,6 +25,7 @@ function AdminGenericPage() {
   if (slug === "settings/language") return <LanguageManagement />;
   if (slug === "settings/timezone") return <TimezoneManagement />;
   if (slug === "settings/stakeholder-types") return <StakeholderTypes />;
+  if (slug === "settings/industry-tags") return <IndustryTags />;
 
   const found = findPage(slug);
 
