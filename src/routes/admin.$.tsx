@@ -23,6 +23,7 @@ function AdminGenericPage() {
   if (slug === "settings/currency") return <CurrencyManagement />;
   if (slug === "settings/language") return <LanguageManagement />;
   if (slug === "settings/timezone") return <TimezoneManagement />;
+  if (slug === "settings/stakeholder-types") return <StakeholderTypes />;
 
   const found = findPage(slug);
 
