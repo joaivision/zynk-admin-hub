@@ -25,6 +25,7 @@ function AdminGenericPage() {
   if (slug === "settings/language") return <LanguageManagement />;
   if (slug === "settings/timezone") return <TimezoneManagement />;
   if (slug === "settings/stakeholder-types") return <StakeholderTypes />;
+  if (slug === "settings/industry-tags") return <IndustryTags />;
 
   const found = findPage(slug);
 
