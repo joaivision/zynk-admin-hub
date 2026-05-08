@@ -7,6 +7,7 @@ import { findPage } from "@/lib/admin-menu";
 import { ChevronRight, Plus, Search, Download } from "lucide-react";
 import { CountryManagement } from "@/components/admin/CountryManagement";
 import { CurrencyManagement } from "@/components/admin/CurrencyManagement";
+import { LanguageManagement } from "@/components/admin/LanguageManagement";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
@@ -18,6 +19,7 @@ function AdminGenericPage() {
 
   if (slug === "settings/country") return <CountryManagement />;
   if (slug === "settings/currency") return <CurrencyManagement />;
+  if (slug === "settings/language") return <LanguageManagement />;
 
   const found = findPage(slug);
 
