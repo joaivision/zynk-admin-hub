@@ -9,6 +9,7 @@ import { CountryManagement } from "@/components/admin/CountryManagement";
 import { CurrencyManagement } from "@/components/admin/CurrencyManagement";
 import { LanguageManagement } from "@/components/admin/LanguageManagement";
 import { TimezoneManagement } from "@/components/admin/TimezoneManagement";
+import { StakeholderTypes } from "@/components/admin/StakeholderTypes";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
