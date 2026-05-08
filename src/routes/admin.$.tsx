@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { findPage } from "@/lib/admin-menu";
 import { ChevronRight, Plus, Search, Download } from "lucide-react";
 import { CountryManagement } from "@/components/admin/CountryManagement";
+import { CurrencyManagement } from "@/components/admin/CurrencyManagement";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
