@@ -17,6 +17,7 @@ function AdminGenericPage() {
   const slug = _splat ?? "";
 
   if (slug === "settings/country") return <CountryManagement />;
+  if (slug === "settings/currency") return <CurrencyManagement />;
 
   const found = findPage(slug);
 
