@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { findPage } from "@/lib/admin-menu";
 import { ChevronRight, Plus, Search, Download } from "lucide-react";
+import { CountryManagement } from "@/components/admin/CountryManagement";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
@@ -13,6 +14,9 @@ export const Route = createFileRoute("/admin/$")({
 function AdminGenericPage() {
   const { _splat } = Route.useParams();
   const slug = _splat ?? "";
+
+  if (slug === "settings/country") return <CountryManagement />;
+
   const found = findPage(slug);
 
   const groupTitle = found?.group.title ?? "Admin";
