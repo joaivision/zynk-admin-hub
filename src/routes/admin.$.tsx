@@ -38,6 +38,12 @@ import { PlanConfig } from "@/components/admin/PlanConfig";
 import { FeatureTogglePerPlan } from "@/components/admin/FeatureTogglePerPlan";
 import { PricingPerPlan } from "@/components/admin/PricingPerPlan";
 import { ActiveSubscriptions } from "@/components/admin/ActiveSubscriptions";
+import { ExpertDirectory } from "@/components/admin/ExpertDirectory";
+import { ExpertOnboarding } from "@/components/admin/ExpertOnboarding";
+import { SessionBookings } from "@/components/admin/SessionBookings";
+import { MentorshipPricing } from "@/components/admin/MentorshipPricing";
+import { MentorshipReviews } from "@/components/admin/MentorshipReviews";
+import { MentorshipPayouts } from "@/components/admin/MentorshipPayouts";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
@@ -74,6 +80,12 @@ function AdminGenericPage() {
   if (slug === "plans/features") return <FeatureTogglePerPlan />;
   if (slug === "plans/pricing") return <PricingPerPlan />;
   if (slug === "plans/subscriptions") return <ActiveSubscriptions />;
+  if (slug === "mentorship/experts") return <ExpertDirectory />;
+  if (slug === "mentorship/onboarding") return <ExpertOnboarding />;
+  if (slug === "mentorship/bookings") return <SessionBookings />;
+  if (slug === "mentorship/pricing") return <MentorshipPricing />;
+  if (slug === "mentorship/reviews") return <MentorshipReviews />;
+  if (slug === "mentorship/payouts") return <MentorshipPayouts />;
   if (slug === "settings/partner-apps") return <PartnerApps />;
   if (slug === "settings/maintenance") return <MaintenanceMode />;
   if (slug === "settings/consent") return <ConsentBanner />;
