@@ -36,6 +36,8 @@ import { InternalNotes } from "@/components/admin/InternalNotes";
 import { ExportUsers } from "@/components/admin/ExportUsers";
 import { PlanConfig } from "@/components/admin/PlanConfig";
 import { FeatureTogglePerPlan } from "@/components/admin/FeatureTogglePerPlan";
+import { PricingPerPlan } from "@/components/admin/PricingPerPlan";
+import { ActiveSubscriptions } from "@/components/admin/ActiveSubscriptions";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
@@ -70,6 +72,8 @@ function AdminGenericPage() {
   if (slug === "users/export") return <ExportUsers />;
   if (slug === "plans/config") return <PlanConfig />;
   if (slug === "plans/features") return <FeatureTogglePerPlan />;
+  if (slug === "plans/pricing") return <PricingPerPlan />;
+  if (slug === "plans/subscriptions") return <ActiveSubscriptions />;
   if (slug === "settings/partner-apps") return <PartnerApps />;
   if (slug === "settings/maintenance") return <MaintenanceMode />;
   if (slug === "settings/consent") return <ConsentBanner />;
