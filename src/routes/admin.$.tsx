@@ -67,6 +67,7 @@ function AdminGenericPage() {
   if (slug === "users/reset-password") return <ResetPassword />;
   if (slug === "users/notes") return <InternalNotes />;
   if (slug === "users/export") return <ExportUsers />;
+  if (slug === "plans/config") return <PlanConfig />;
   if (slug === "settings/partner-apps") return <PartnerApps />;
   if (slug === "settings/maintenance") return <MaintenanceMode />;
   if (slug === "settings/consent") return <ConsentBanner />;
