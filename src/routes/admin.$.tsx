@@ -16,6 +16,7 @@ import { IntentOptions } from "@/components/admin/IntentOptions";
 import { PlatformBranding } from "@/components/admin/PlatformBranding";
 import { LegalDocuments } from "@/components/admin/LegalDocuments";
 import { FeatureFlags } from "@/components/admin/FeatureFlags";
+import { NotificationProviders } from "@/components/admin/NotificationProviders";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
@@ -36,6 +37,7 @@ function AdminGenericPage() {
   if (slug === "settings/platform-branding") return <PlatformBranding />;
   if (slug === "settings/legal") return <LegalDocuments />;
   if (slug === "settings/feature-flags") return <FeatureFlags />;
+  if (slug === "settings/notification-providers") return <NotificationProviders />;
 
   const found = findPage(slug);
 
