@@ -30,6 +30,16 @@ import {
 type Env = "dev" | "staging" | "prod";
 type FlagType = "release" | "experiment" | "kill-switch" | "permission" | "config";
 type FlagStatus = "active" | "paused" | "archived";
+type Role = "viewer" | "editor" | "approver" | "admin";
+
+type ScheduledRollout = {
+  id: string;
+  env: Env;
+  rollout: number;
+  enabled: boolean;
+  at: string; // ISO datetime
+  applied?: boolean;
+};
 
 type Flag = {
   id: string;
@@ -52,10 +62,31 @@ type Flag = {
   updatedAt: string;
   evaluations24h: number;
   exposureRate: number;
+  schedules?: ScheduledRollout[];
 };
 
 type AuditEntry = {
   id: string; flagId: string; at: string; by: string; action: string; detail: string;
+};
+
+type PendingChange = {
+  id: string;
+  flagId: string;
+  requestedBy: string;
+  requestedAt: string;
+  summary: string;
+  patch: Partial<Flag>;
+  status: "pending" | "approved" | "rejected";
+  reviewedBy?: string;
+  reviewedAt?: string;
+  reason?: string;
+};
+
+const rolePermissions: Record<Role, { create: boolean; edit: boolean; pause: boolean; approveProd: boolean; emergency: boolean; directProd: boolean }> = {
+  viewer:   { create: false, edit: false, pause: false, approveProd: false, emergency: false, directProd: false },
+  editor:   { create: true,  edit: true,  pause: true,  approveProd: false, emergency: false, directProd: false },
+  approver: { create: true,  edit: true,  pause: true,  approveProd: true,  emergency: false, directProd: false },
+  admin:    { create: true,  edit: true,  pause: true,  approveProd: true,  emergency: true,  directProd: true  },
 };
 
 const allAudiences = ["All Users","Founders","Investors","Mentors","Vendors","Employers","Job Seekers","Beta Testers","Internal"];
