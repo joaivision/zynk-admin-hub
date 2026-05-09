@@ -27,6 +27,13 @@ import { DomainsDNS } from "@/components/admin/DomainsDNS";
 import { AbuseRules } from "@/components/admin/AbuseRules";
 import { SeoMetadata } from "@/components/admin/SeoMetadata";
 import { UsersList } from "@/components/admin/UsersList";
+import { UserSearchFilter } from "@/components/admin/UserSearchFilter";
+import { UserDetail } from "@/components/admin/UserDetail";
+import { AccountStatus } from "@/components/admin/AccountStatus";
+import { SuspendReinstate } from "@/components/admin/SuspendReinstate";
+import { ResetPassword } from "@/components/admin/ResetPassword";
+import { InternalNotes } from "@/components/admin/InternalNotes";
+import { ExportUsers } from "@/components/admin/ExportUsers";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
@@ -52,6 +59,13 @@ function AdminGenericPage() {
   if (slug === "settings/payment-analytics") return <PaymentAnalytics />;
   if (slug === "settings/integrations") return <Integrations />;
   if (slug === "users/list") return <UsersList />;
+  if (slug === "users/search") return <UserSearchFilter />;
+  if (slug === "users/detail") return <UserDetail />;
+  if (slug === "users/status") return <AccountStatus />;
+  if (slug === "users/suspend") return <SuspendReinstate />;
+  if (slug === "users/reset-password") return <ResetPassword />;
+  if (slug === "users/notes") return <InternalNotes />;
+  if (slug === "users/export") return <ExportUsers />;
   if (slug === "settings/partner-apps") return <PartnerApps />;
   if (slug === "settings/maintenance") return <MaintenanceMode />;
   if (slug === "settings/consent") return <ConsentBanner />;
