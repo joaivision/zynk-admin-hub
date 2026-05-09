@@ -43,6 +43,7 @@ function AdminGenericPage() {
   if (slug === "settings/notification-providers") return <NotificationProviders />;
   if (slug === "settings/payment-gateways") return <PaymentGateways />;
   if (slug === "settings/payment-analytics") return <PaymentAnalytics />;
+  if (slug === "settings/integrations") return <Integrations />;
 
   const found = findPage(slug);
 
