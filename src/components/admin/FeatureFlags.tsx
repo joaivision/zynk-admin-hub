@@ -221,6 +221,42 @@ const seedAudit: AuditEntry[] = [
   { id: "a5", flagId: "f4", at: "2026-05-04 17:02", by: "ai@zynk.ing", action: "variant", detail: "coach 25% → 30%" },
 ];
 
+const seedPending: PendingChange[] = [
+  { id: "p1", flagId: "f1", requestedBy: "priya@zynk.ing", requestedAt: "2026-05-08 11:30", summary: "Increase prod rollout 35% → 60%", patch: { envs: { dev: { enabled: true, rollout: 100 }, staging: { enabled: true, rollout: 100 }, prod: { enabled: true, rollout: 60 } } }, status: "pending" },
+  { id: "p2", flagId: "f4", requestedBy: "ai@zynk.ing", requestedAt: "2026-05-08 09:14", summary: "Variant split coach 30% → 50%", patch: { variants: [{ key: "control", weight: 50 }, { key: "coach", weight: 50 }] }, status: "pending" },
+];
+
+// Stable bucket hash for sticky per-user evaluation
+function hashBucket(userId: string, key: string): number {
+  let h = 2166136261;
+  const s = `${userId}:${key}`;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = (h * 16777619) >>> 0; }
+  return h % 10000;
+}
+
+type EvalResult = { enabled: boolean; variant: string | null; reason: string };
+
+function evaluateFlag(flag: Flag, userId: string, ctx: { audience: string; plan: string; region: string; platform: string; env: Env }): EvalResult {
+  if (flag.status !== "active") return { enabled: false, variant: null, reason: `flag ${flag.status}` };
+  const e = flag.envs[ctx.env];
+  if (!e.enabled) return { enabled: false, variant: null, reason: `${ctx.env} disabled` };
+  if (flag.audiences.length && !flag.audiences.includes("All Users") && !flag.audiences.includes(ctx.audience)) return { enabled: false, variant: null, reason: "audience excluded" };
+  if (flag.plans.length && !flag.plans.includes(ctx.plan)) return { enabled: false, variant: null, reason: "plan excluded" };
+  if (flag.regions.length && !flag.regions.includes("Global") && !flag.regions.includes(ctx.region)) return { enabled: false, variant: null, reason: "region excluded" };
+  if (flag.platforms.length && !flag.platforms.includes(ctx.platform)) return { enabled: false, variant: null, reason: "platform excluded" };
+  const bucket = hashBucket(userId, flag.key);
+  const threshold = (e.rollout / 100) * 10000;
+  if (bucket >= threshold) return { enabled: false, variant: null, reason: `bucket ${bucket} ≥ rollout ${e.rollout}%` };
+  let variant: string | null = null;
+  if (flag.variants && flag.variants.length) {
+    const vBucket = hashBucket(userId, `${flag.key}:variant`) % 100;
+    let acc = 0;
+    for (const v of flag.variants) { acc += v.weight; if (vBucket < acc) { variant = v.key; break; } }
+    if (!variant) variant = flag.variants[flag.variants.length - 1].key;
+  }
+  return { enabled: true, variant, reason: `bucket ${bucket} < ${e.rollout}%` };
+}
+
 export function FeatureFlags() {
   const [flags, setFlags] = useState<Flag[]>(seedFlags);
   const [audit, setAudit] = useState<AuditEntry[]>(seedAudit);
