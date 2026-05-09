@@ -20,6 +20,7 @@ import { NotificationProviders } from "@/components/admin/NotificationProviders"
 import { PaymentGateways } from "@/components/admin/PaymentGateways";
 import { PaymentAnalytics } from "@/components/admin/PaymentAnalytics";
 import { Integrations } from "@/components/admin/Integrations";
+import { PartnerApps } from "@/components/admin/PartnerApps";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
@@ -44,6 +45,7 @@ function AdminGenericPage() {
   if (slug === "settings/payment-gateways") return <PaymentGateways />;
   if (slug === "settings/payment-analytics") return <PaymentAnalytics />;
   if (slug === "settings/integrations") return <Integrations />;
+  if (slug === "settings/partner-apps") return <PartnerApps />;
 
   const found = findPage(slug);
 
