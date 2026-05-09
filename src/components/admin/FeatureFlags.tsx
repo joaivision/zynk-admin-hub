@@ -889,6 +889,76 @@ function FlagEditor({ open, flag, creating, onClose, onSave }: {
               Rollout is sticky per user-id. Increase gradually (5 → 25 → 50 → 100) and watch error rates.
             </div>
           </TabsContent>
+
+          <TabsContent value="schedule" className="space-y-3">
+            <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
+              <Clock className="mr-1 inline h-3.5 w-3.5 text-blue-500" />
+              Schedule automatic rollout changes. Each entry will apply at the chosen date/time.
+            </div>
+            {(draft.schedules ?? []).map((s, idx) => (
+              <div key={s.id} className="rounded-md border p-3">
+                <div className="flex flex-wrap items-end gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] uppercase">Env</Label>
+                    <Select value={s.env} onValueChange={(v) => {
+                      const next = [...(draft.schedules ?? [])];
+                      next[idx] = { ...s, env: v as Env };
+                      update("schedules", next);
+                    }}>
+                      <SelectTrigger className="h-8 w-24"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="dev">dev</SelectItem>
+                        <SelectItem value="staging">staging</SelectItem>
+                        <SelectItem value="prod">prod</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] uppercase">Enabled</Label>
+                    <Switch checked={s.enabled} onCheckedChange={(v) => {
+                      const next = [...(draft.schedules ?? [])];
+                      next[idx] = { ...s, enabled: v };
+                      update("schedules", next);
+                    }} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] uppercase">Rollout %</Label>
+                    <Input type="number" min={0} max={100} value={s.rollout} className="h-8 w-20"
+                      onChange={(e) => {
+                        const next = [...(draft.schedules ?? [])];
+                        next[idx] = { ...s, rollout: Number(e.target.value) };
+                        update("schedules", next);
+                      }} />
+                  </div>
+                  <div className="space-y-1 flex-1 min-w-[180px]">
+                    <Label className="text-[10px] uppercase">When (local)</Label>
+                    <Input type="datetime-local" value={s.at.slice(0,16)} className="h-8"
+                      onChange={(e) => {
+                        const next = [...(draft.schedules ?? [])];
+                        next[idx] = { ...s, at: new Date(e.target.value).toISOString(), applied: false };
+                        update("schedules", next);
+                      }} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] uppercase">&nbsp;</Label>
+                    <div className="flex items-center gap-1">
+                      {s.applied && <Badge variant="outline" className="text-[10px] border-emerald-500/30 bg-emerald-500/10 text-emerald-500">Applied</Badge>}
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => {
+                        update("schedules", (draft.schedules ?? []).filter((x) => x.id !== s.id));
+                      }}><X className="h-3.5 w-3.5" /></Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <Button variant="outline" size="sm" className="gap-1" onClick={() => {
+              const next: ScheduledRollout = {
+                id: `s${Date.now()}`, env: "prod", rollout: 25, enabled: true,
+                at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+              };
+              update("schedules", [...(draft.schedules ?? []), next]);
+            }}><Plus className="h-3.5 w-3.5" /> Add schedule</Button>
+          </TabsContent>
         </Tabs>
 
         <DialogFooter>
