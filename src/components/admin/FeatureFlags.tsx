@@ -685,6 +685,7 @@ export function FeatureFlags() {
           <FlagInspectorPanel flags={flags} />
         </TabsContent>
 
+        <TabsContent value="audit" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Audit log</CardTitle>
