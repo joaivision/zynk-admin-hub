@@ -814,6 +814,7 @@ function FlagEditor({ open, flag, creating, onClose, onSave }: {
             <TabsTrigger value="basic">Basic</TabsTrigger>
             <TabsTrigger value="targeting">Targeting</TabsTrigger>
             <TabsTrigger value="rollout">Rollout</TabsTrigger>
+            <TabsTrigger value="schedule">Schedule</TabsTrigger>
           </TabsList>
 
           <TabsContent value="basic" className="space-y-4">
