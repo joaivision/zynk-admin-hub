@@ -972,7 +972,7 @@ function FlagEditor({ open, flag, creating, onClose, onSave }: {
 
 /* ============== Scheduled rollouts panel ============== */
 function ScheduledRolloutsPanel({ flags, setFlags, perms, log }: {
-  flags: Flag[]; setFlags: React.Dispatch<React.SetStateAction<Flag[]>>;
+  flags: Flag[]; setFlags: Dispatch<SetStateAction<Flag[]>>;
   perms: typeof rolePermissions[Role]; log: (id: string, action: string, detail: string) => void;
 }) {
   const all = flags.flatMap((f) => (f.schedules ?? []).map((s) => ({ ...s, flag: f })));
