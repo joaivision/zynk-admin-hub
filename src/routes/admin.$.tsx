@@ -35,6 +35,7 @@ import { ResetPassword } from "@/components/admin/ResetPassword";
 import { InternalNotes } from "@/components/admin/InternalNotes";
 import { ExportUsers } from "@/components/admin/ExportUsers";
 import { PlanConfig } from "@/components/admin/PlanConfig";
+import { FeatureTogglePerPlan } from "@/components/admin/FeatureTogglePerPlan";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
@@ -68,6 +69,7 @@ function AdminGenericPage() {
   if (slug === "users/notes") return <InternalNotes />;
   if (slug === "users/export") return <ExportUsers />;
   if (slug === "plans/config") return <PlanConfig />;
+  if (slug === "plans/features") return <FeatureTogglePerPlan />;
   if (slug === "settings/partner-apps") return <PartnerApps />;
   if (slug === "settings/maintenance") return <MaintenanceMode />;
   if (slug === "settings/consent") return <ConsentBanner />;
