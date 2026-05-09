@@ -46,6 +46,7 @@ export const adminMenu: AdminGroup[] = [
       { title: "Feature Flags", slug: "settings/feature-flags" },
       { title: "Email / SMS / Push Config", slug: "settings/notification-providers" },
       { title: "Payment Gateway Config", slug: "settings/payment-gateways" },
+      { title: "Payment Analytics", slug: "settings/payment-analytics" },
       { title: "Third-party Integrations", slug: "settings/integrations" },
     ],
   },
