@@ -21,6 +21,11 @@ import { PaymentGateways } from "@/components/admin/PaymentGateways";
 import { PaymentAnalytics } from "@/components/admin/PaymentAnalytics";
 import { Integrations } from "@/components/admin/Integrations";
 import { PartnerApps } from "@/components/admin/PartnerApps";
+import { MaintenanceMode } from "@/components/admin/MaintenanceMode";
+import { ConsentBanner } from "@/components/admin/ConsentBanner";
+import { DomainsDNS } from "@/components/admin/DomainsDNS";
+import { AbuseRules } from "@/components/admin/AbuseRules";
+import { SeoMetadata } from "@/components/admin/SeoMetadata";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
@@ -46,6 +51,11 @@ function AdminGenericPage() {
   if (slug === "settings/payment-analytics") return <PaymentAnalytics />;
   if (slug === "settings/integrations") return <Integrations />;
   if (slug === "settings/partner-apps") return <PartnerApps />;
+  if (slug === "settings/maintenance") return <MaintenanceMode />;
+  if (slug === "settings/consent") return <ConsentBanner />;
+  if (slug === "settings/domains") return <DomainsDNS />;
+  if (slug === "settings/abuse-rules") return <AbuseRules />;
+  if (slug === "settings/seo") return <SeoMetadata />;
 
   const found = findPage(slug);
 
