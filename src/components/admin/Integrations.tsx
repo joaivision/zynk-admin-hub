@@ -39,7 +39,7 @@ type Integration = {
   name: string;
   vendor: string;
   category: Category;
-  description: string;
+  description?: string;
   authMethod: AuthMethod;
   status: Status;
   env: Env;
