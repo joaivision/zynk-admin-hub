@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,11 +24,22 @@ import {
   Flag, Plus, Search, Download, Upload, Edit, Trash2, History, Eye, ChevronRight,
   Rocket, Beaker, Lock, AlertTriangle, Users, Globe, Smartphone, Monitor, Zap,
   Pause, PlayCircle, Copy, GitBranch, Activity, ShieldAlert, CheckCircle2,
+  Calendar, Clock, UserCheck, GitPullRequest, Code2, UserSearch, X, Check,
 } from "lucide-react";
 
 type Env = "dev" | "staging" | "prod";
 type FlagType = "release" | "experiment" | "kill-switch" | "permission" | "config";
 type FlagStatus = "active" | "paused" | "archived";
+type Role = "viewer" | "editor" | "approver" | "admin";
+
+type ScheduledRollout = {
+  id: string;
+  env: Env;
+  rollout: number;
+  enabled: boolean;
+  at: string; // ISO datetime
+  applied?: boolean;
+};
 
 type Flag = {
   id: string;
@@ -51,10 +62,31 @@ type Flag = {
   updatedAt: string;
   evaluations24h: number;
   exposureRate: number;
+  schedules?: ScheduledRollout[];
 };
 
 type AuditEntry = {
   id: string; flagId: string; at: string; by: string; action: string; detail: string;
+};
+
+type PendingChange = {
+  id: string;
+  flagId: string;
+  requestedBy: string;
+  requestedAt: string;
+  summary: string;
+  patch: Partial<Flag>;
+  status: "pending" | "approved" | "rejected";
+  reviewedBy?: string;
+  reviewedAt?: string;
+  reason?: string;
+};
+
+const rolePermissions: Record<Role, { create: boolean; edit: boolean; pause: boolean; approveProd: boolean; emergency: boolean; directProd: boolean }> = {
+  viewer:   { create: false, edit: false, pause: false, approveProd: false, emergency: false, directProd: false },
+  editor:   { create: true,  edit: true,  pause: true,  approveProd: false, emergency: false, directProd: false },
+  approver: { create: true,  edit: true,  pause: true,  approveProd: true,  emergency: false, directProd: false },
+  admin:    { create: true,  edit: true,  pause: true,  approveProd: true,  emergency: true,  directProd: true  },
 };
 
 const allAudiences = ["All Users","Founders","Investors","Mentors","Vendors","Employers","Job Seekers","Beta Testers","Internal"];
@@ -189,9 +221,47 @@ const seedAudit: AuditEntry[] = [
   { id: "a5", flagId: "f4", at: "2026-05-04 17:02", by: "ai@zynk.ing", action: "variant", detail: "coach 25% → 30%" },
 ];
 
+const seedPending: PendingChange[] = [
+  { id: "p1", flagId: "f1", requestedBy: "priya@zynk.ing", requestedAt: "2026-05-08 11:30", summary: "Increase prod rollout 35% → 60%", patch: { envs: { dev: { enabled: true, rollout: 100 }, staging: { enabled: true, rollout: 100 }, prod: { enabled: true, rollout: 60 } } }, status: "pending" },
+  { id: "p2", flagId: "f4", requestedBy: "ai@zynk.ing", requestedAt: "2026-05-08 09:14", summary: "Variant split coach 30% → 50%", patch: { variants: [{ key: "control", weight: 50 }, { key: "coach", weight: 50 }] }, status: "pending" },
+];
+
+// Stable bucket hash for sticky per-user evaluation
+function hashBucket(userId: string, key: string): number {
+  let h = 2166136261;
+  const s = `${userId}:${key}`;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = (h * 16777619) >>> 0; }
+  return h % 10000;
+}
+
+type EvalResult = { enabled: boolean; variant: string | null; reason: string };
+
+function evaluateFlag(flag: Flag, userId: string, ctx: { audience: string; plan: string; region: string; platform: string; env: Env }): EvalResult {
+  if (flag.status !== "active") return { enabled: false, variant: null, reason: `flag ${flag.status}` };
+  const e = flag.envs[ctx.env];
+  if (!e.enabled) return { enabled: false, variant: null, reason: `${ctx.env} disabled` };
+  if (flag.audiences.length && !flag.audiences.includes("All Users") && !flag.audiences.includes(ctx.audience)) return { enabled: false, variant: null, reason: "audience excluded" };
+  if (flag.plans.length && !flag.plans.includes(ctx.plan)) return { enabled: false, variant: null, reason: "plan excluded" };
+  if (flag.regions.length && !flag.regions.includes("Global") && !flag.regions.includes(ctx.region)) return { enabled: false, variant: null, reason: "region excluded" };
+  if (flag.platforms.length && !flag.platforms.includes(ctx.platform)) return { enabled: false, variant: null, reason: "platform excluded" };
+  const bucket = hashBucket(userId, flag.key);
+  const threshold = (e.rollout / 100) * 10000;
+  if (bucket >= threshold) return { enabled: false, variant: null, reason: `bucket ${bucket} ≥ rollout ${e.rollout}%` };
+  let variant: string | null = null;
+  if (flag.variants && flag.variants.length) {
+    const vBucket = hashBucket(userId, `${flag.key}:variant`) % 100;
+    let acc = 0;
+    for (const v of flag.variants) { acc += v.weight; if (vBucket < acc) { variant = v.key; break; } }
+    if (!variant) variant = flag.variants[flag.variants.length - 1].key;
+  }
+  return { enabled: true, variant, reason: `bucket ${bucket} < ${e.rollout}%` };
+}
+
 export function FeatureFlags() {
   const [flags, setFlags] = useState<Flag[]>(seedFlags);
   const [audit, setAudit] = useState<AuditEntry[]>(seedAudit);
+  const [pending, setPending] = useState<PendingChange[]>(seedPending);
+  const [role, setRole] = useState<Role>("admin");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -202,6 +272,11 @@ export function FeatureFlags() {
   const [historyFlag, setHistoryFlag] = useState<Flag | null>(null);
   const [deleteFlag, setDeleteFlag] = useState<Flag | null>(null);
   const [emergencyOpen, setEmergencyOpen] = useState(false);
+  const perms = rolePermissions[role];
+  const requireRole = (allowed: boolean, action: string) => {
+    if (!allowed) { toast.error(`Your role (${role}) cannot ${action}`); return false; }
+    return true;
+  };
 
   const filtered = useMemo(() => flags.filter((f) => {
     if (typeFilter !== "all" && f.type !== typeFilter) return false;
@@ -233,6 +308,14 @@ export function FeatureFlags() {
   };
 
   const toggleEnv = (id: string, env: Env, enabled: boolean) => {
+    if (env === "prod" && !perms.directProd) {
+      const flag = flags.find((f) => f.id === id);
+      if (flag) {
+        requestChange(flag, `${enabled ? "Enable" : "Disable"} prod`, { envs: { ...flag.envs, prod: { ...flag.envs.prod, enabled, rollout: enabled ? Math.max(flag.envs.prod.rollout, 1) : 0 } } });
+      }
+      return;
+    }
+    if (!requireRole(perms.edit, "edit flags")) return;
     setFlags((fs) => fs.map((f) => {
       if (f.id !== id) return f;
       return { ...f, updatedAt: new Date().toISOString().slice(0,10), envs: { ...f.envs, [env]: { ...f.envs[env], enabled, rollout: enabled ? Math.max(f.envs[env].rollout, 1) : 0 } } };
@@ -242,11 +325,14 @@ export function FeatureFlags() {
   };
 
   const setRollout = (id: string, env: Env, rollout: number) => {
+    if (env === "prod" && !perms.directProd) return; // silently block; will require approval via editor
+    if (!perms.edit) return;
     setFlags((fs) => fs.map((f) => f.id === id ? { ...f, updatedAt: new Date().toISOString().slice(0,10), envs: { ...f.envs, [env]: { enabled: rollout > 0, rollout } } } : f));
   };
 
   const bulk = (action: "pause" | "resume" | "archive" | "delete") => {
     if (!selected.length) return;
+    if (!requireRole(perms.pause, "perform bulk actions")) return;
     if (action === "delete") {
       setFlags((fs) => fs.filter((f) => !selected.includes(f.id)));
       toast.success(`Deleted ${selected.length} flags`);
@@ -258,8 +344,73 @@ export function FeatureFlags() {
     setSelected([]);
   };
 
+  const requestChange = (flag: Flag, summary: string, patch: Partial<Flag>) => {
+    if (!requireRole(perms.edit, "request changes")) return;
+    const id = `p${Date.now()}`;
+    setPending((p) => [{ id, flagId: flag.id, requestedBy: "you@zynk.ing", requestedAt: new Date().toISOString().slice(0,16).replace("T"," "), summary, patch, status: "pending" }, ...p]);
+    log(flag.id, "change-requested", summary);
+    toast.success("Change submitted for approval");
+  };
+
+  const reviewChange = (id: string, decision: "approve" | "reject", reason?: string) => {
+    if (!requireRole(perms.approveProd, "approve changes")) return;
+    setPending((ps) => ps.map((p) => {
+      if (p.id !== id) return p;
+      if (decision === "approve") {
+        setFlags((fs) => fs.map((f) => f.id === p.flagId ? { ...f, ...p.patch, updatedAt: new Date().toISOString().slice(0,10) } : f));
+        log(p.flagId, "approved", p.summary);
+        toast.success("Change approved & live");
+      } else {
+        log(p.flagId, "rejected", `${p.summary} (${reason || "no reason"})`);
+        toast.success("Change rejected");
+      }
+      return { ...p, status: decision === "approve" ? "approved" : "rejected", reviewedBy: "you@zynk.ing", reviewedAt: new Date().toISOString().slice(0,16).replace("T"," "), reason };
+    }));
+  };
+
+  // Scheduled rollouts: tick every 30s, apply due schedules
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date();
+      setFlags((fs) => fs.map((f) => {
+        if (!f.schedules?.length) return f;
+        let changed = false;
+        const newEnvs = { ...f.envs };
+        const newSchedules = f.schedules.map((s) => {
+          if (!s.applied && new Date(s.at) <= now) {
+            newEnvs[s.env] = { enabled: s.enabled, rollout: s.rollout };
+            changed = true;
+            log(f.id, "scheduled", `${s.env} → ${s.enabled ? `${s.rollout}%` : "OFF"} (auto)`);
+            return { ...s, applied: true };
+          }
+          return s;
+        });
+        return changed ? { ...f, envs: newEnvs, schedules: newSchedules, updatedAt: new Date().toISOString().slice(0,10) } : f;
+      }));
+    };
+    tick();
+    const t = setInterval(tick, 30000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+
   const saveFlag = (f: Flag) => {
     const isNew = !flags.find((x) => x.id === f.id);
+    const existing = flags.find((x) => x.id === f.id);
+    if (!isNew && existing && !perms.directProd) {
+      // If prod env changed, route through approval
+      const prodChanged = existing.envs.prod.enabled !== f.envs.prod.enabled || existing.envs.prod.rollout !== f.envs.prod.rollout;
+      if (prodChanged) {
+        // Save non-prod portion, queue prod
+        const nonProd: Partial<Flag> = { ...f, envs: { ...f.envs, prod: existing.envs.prod } };
+        setFlags((fs) => fs.map((x) => x.id === f.id ? { ...x, ...nonProd, updatedAt: new Date().toISOString().slice(0,10) } : x));
+        requestChange(existing, `Prod ${existing.envs.prod.rollout}% → ${f.envs.prod.rollout}% (${f.envs.prod.enabled ? "ON" : "OFF"})`, { envs: f.envs });
+        setEditing(null); setCreating(false);
+        return;
+      }
+    }
+    if (!perms.edit && !perms.create) { toast.error(`Your role (${role}) cannot save flags`); return; }
     if (isNew) setFlags((fs) => [...fs, f]);
     else setFlags((fs) => fs.map((x) => x.id === f.id ? f : x));
     log(f.id, isNew ? "created" : "updated", f.key);
@@ -296,13 +447,26 @@ export function FeatureFlags() {
             Ship safely. Control releases, experiments, kill-switches and per-plan permissions across Zynk.ing.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 rounded-md border bg-muted/30 px-2 py-1 text-xs">
+            <UserCheck className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-muted-foreground">Acting as</span>
+            <Select value={role} onValueChange={(v) => setRole(v as Role)}>
+              <SelectTrigger className="h-7 w-28 border-0 bg-transparent px-1 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="viewer">Viewer</SelectItem>
+                <SelectItem value="editor">Editor</SelectItem>
+                <SelectItem value="approver">Approver</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <Button variant="outline" size="sm" onClick={exportJson} className="gap-1"><Download className="h-4 w-4" /> Export</Button>
           <Button variant="outline" size="sm" className="gap-1"><Upload className="h-4 w-4" /> Import</Button>
-          <Button variant="outline" size="sm" onClick={() => setEmergencyOpen(true)} className="gap-1 border-rose-500/30 text-rose-500 hover:bg-rose-500/10">
+          <Button variant="outline" size="sm" disabled={!perms.emergency} onClick={() => setEmergencyOpen(true)} className="gap-1 border-rose-500/30 text-rose-500 hover:bg-rose-500/10 disabled:opacity-40">
             <ShieldAlert className="h-4 w-4" /> Emergency stop
           </Button>
-          <Button size="sm" onClick={() => setCreating(true)} className="gap-1"><Plus className="h-4 w-4" /> New flag</Button>
+          <Button size="sm" disabled={!perms.create} onClick={() => setCreating(true)} className="gap-1"><Plus className="h-4 w-4" /> New flag</Button>
         </div>
       </div>
 
@@ -326,11 +490,21 @@ export function FeatureFlags() {
       </div>
 
       <Tabs defaultValue="flags">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="flags">All Flags</TabsTrigger>
           <TabsTrigger value="experiments">Experiments</TabsTrigger>
+          <TabsTrigger value="schedules" className="gap-1"><Calendar className="h-3.5 w-3.5" />Schedules</TabsTrigger>
+          <TabsTrigger value="approvals" className="gap-1">
+            <GitPullRequest className="h-3.5 w-3.5" />Approvals
+            {pending.filter((p) => p.status === "pending").length > 0 && (
+              <Badge variant="outline" className="ml-1 h-4 border-amber-500/30 bg-amber-500/10 px-1 text-[10px] text-amber-500">
+                {pending.filter((p) => p.status === "pending").length}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="inspector" className="gap-1"><UserSearch className="h-3.5 w-3.5" />Inspector</TabsTrigger>
           <TabsTrigger value="audit">Audit Log</TabsTrigger>
-          <TabsTrigger value="docs">Integration</TabsTrigger>
+          <TabsTrigger value="docs" className="gap-1"><Code2 className="h-3.5 w-3.5" />API</TabsTrigger>
         </TabsList>
 
         <TabsContent value="flags" className="space-y-4">
@@ -499,6 +673,18 @@ export function FeatureFlags() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="schedules" className="space-y-4">
+          <ScheduledRolloutsPanel flags={flags} setFlags={setFlags} perms={perms} log={log} />
+        </TabsContent>
+
+        <TabsContent value="approvals" className="space-y-4">
+          <ApprovalsPanel pending={pending} flags={flags} perms={perms} onReview={reviewChange} />
+        </TabsContent>
+
+        <TabsContent value="inspector" className="space-y-4">
+          <FlagInspectorPanel flags={flags} />
+        </TabsContent>
+
         <TabsContent value="audit" className="space-y-4">
           <Card>
             <CardHeader>
@@ -531,32 +717,7 @@ export function FeatureFlags() {
         </TabsContent>
 
         <TabsContent value="docs" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Integration snippet</CardTitle>
-              <CardDescription>Drop-in evaluation API for any Zynk.ing surface.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <pre className="overflow-x-auto rounded-md border bg-muted/30 p-4 text-xs leading-relaxed">
-{`import { useFlag } from "@/lib/flags";
-
-const matchV2 = useFlag("ai_match_v2");
-if (matchV2.enabled) {
-  // route through new engine
-}
-
-// Variants
-const { variant } = useFlag("ai_pitch_coach");
-if (variant === "coach") showCoach();
-
-// Numeric config
-const cap = useFlag<number>("max_swipes_per_day", 20);`}
-              </pre>
-              <p className="mt-3 text-xs text-muted-foreground">
-                Evaluation is sticky per user-id, hashed with the flag key for stable bucketing.
-              </p>
-            </CardContent>
-          </Card>
+          <FlagApiPanel flags={flags} />
         </TabsContent>
       </Tabs>
 
@@ -653,6 +814,7 @@ function FlagEditor({ open, flag, creating, onClose, onSave }: {
             <TabsTrigger value="basic">Basic</TabsTrigger>
             <TabsTrigger value="targeting">Targeting</TabsTrigger>
             <TabsTrigger value="rollout">Rollout</TabsTrigger>
+            <TabsTrigger value="schedule">Schedule</TabsTrigger>
           </TabsList>
 
           <TabsContent value="basic" className="space-y-4">
@@ -727,6 +889,76 @@ function FlagEditor({ open, flag, creating, onClose, onSave }: {
               Rollout is sticky per user-id. Increase gradually (5 → 25 → 50 → 100) and watch error rates.
             </div>
           </TabsContent>
+
+          <TabsContent value="schedule" className="space-y-3">
+            <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
+              <Clock className="mr-1 inline h-3.5 w-3.5 text-blue-500" />
+              Schedule automatic rollout changes. Each entry will apply at the chosen date/time.
+            </div>
+            {(draft.schedules ?? []).map((s, idx) => (
+              <div key={s.id} className="rounded-md border p-3">
+                <div className="flex flex-wrap items-end gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] uppercase">Env</Label>
+                    <Select value={s.env} onValueChange={(v) => {
+                      const next = [...(draft.schedules ?? [])];
+                      next[idx] = { ...s, env: v as Env };
+                      update("schedules", next);
+                    }}>
+                      <SelectTrigger className="h-8 w-24"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="dev">dev</SelectItem>
+                        <SelectItem value="staging">staging</SelectItem>
+                        <SelectItem value="prod">prod</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] uppercase">Enabled</Label>
+                    <Switch checked={s.enabled} onCheckedChange={(v) => {
+                      const next = [...(draft.schedules ?? [])];
+                      next[idx] = { ...s, enabled: v };
+                      update("schedules", next);
+                    }} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] uppercase">Rollout %</Label>
+                    <Input type="number" min={0} max={100} value={s.rollout} className="h-8 w-20"
+                      onChange={(e) => {
+                        const next = [...(draft.schedules ?? [])];
+                        next[idx] = { ...s, rollout: Number(e.target.value) };
+                        update("schedules", next);
+                      }} />
+                  </div>
+                  <div className="space-y-1 flex-1 min-w-[180px]">
+                    <Label className="text-[10px] uppercase">When (local)</Label>
+                    <Input type="datetime-local" value={s.at.slice(0,16)} className="h-8"
+                      onChange={(e) => {
+                        const next = [...(draft.schedules ?? [])];
+                        next[idx] = { ...s, at: new Date(e.target.value).toISOString(), applied: false };
+                        update("schedules", next);
+                      }} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] uppercase">&nbsp;</Label>
+                    <div className="flex items-center gap-1">
+                      {s.applied && <Badge variant="outline" className="text-[10px] border-emerald-500/30 bg-emerald-500/10 text-emerald-500">Applied</Badge>}
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => {
+                        update("schedules", (draft.schedules ?? []).filter((x) => x.id !== s.id));
+                      }}><X className="h-3.5 w-3.5" /></Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <Button variant="outline" size="sm" className="gap-1" onClick={() => {
+              const next: ScheduledRollout = {
+                id: `s${Date.now()}`, env: "prod", rollout: 25, enabled: true,
+                at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+              };
+              update("schedules", [...(draft.schedules ?? []), next]);
+            }}><Plus className="h-3.5 w-3.5" /> Add schedule</Button>
+          </TabsContent>
         </Tabs>
 
         <DialogFooter>
@@ -735,5 +967,296 @@ function FlagEditor({ open, flag, creating, onClose, onSave }: {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/* ============== Scheduled rollouts panel ============== */
+function ScheduledRolloutsPanel({ flags, setFlags, perms, log }: {
+  flags: Flag[]; setFlags: Dispatch<SetStateAction<Flag[]>>;
+  perms: typeof rolePermissions[Role]; log: (id: string, action: string, detail: string) => void;
+}) {
+  const all = flags.flatMap((f) => (f.schedules ?? []).map((s) => ({ ...s, flag: f })));
+  const upcoming = all.filter((s) => !s.applied).sort((a, b) => a.at.localeCompare(b.at));
+  const past = all.filter((s) => s.applied).sort((a, b) => b.at.localeCompare(a.at));
+
+  const cancel = (flagId: string, scheduleId: string) => {
+    if (!perms.edit) { toast.error("No permission"); return; }
+    setFlags((fs) => fs.map((f) => f.id === flagId ? { ...f, schedules: (f.schedules ?? []).filter((s) => s.id !== scheduleId) } : f));
+    log(flagId, "schedule-cancelled", scheduleId);
+    toast.success("Schedule cancelled");
+  };
+
+  const applyNow = (flagId: string, scheduleId: string) => {
+    if (!perms.directProd) { toast.error("Only admins can force-apply"); return; }
+    setFlags((fs) => fs.map((f) => {
+      if (f.id !== flagId) return f;
+      const s = (f.schedules ?? []).find((x) => x.id === scheduleId);
+      if (!s) return f;
+      return {
+        ...f,
+        envs: { ...f.envs, [s.env]: { enabled: s.enabled, rollout: s.rollout } },
+        schedules: (f.schedules ?? []).map((x) => x.id === scheduleId ? { ...x, applied: true } : x),
+      };
+    }));
+    log(flagId, "schedule-forced", scheduleId);
+    toast.success("Applied immediately");
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2"><Calendar className="h-4 w-4" /> Scheduled rollouts</CardTitle>
+        <CardDescription>Flags activate or change rollout automatically at a specific date and time.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div>
+          <div className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">Upcoming ({upcoming.length})</div>
+          <div className="divide-y rounded-md border">
+            {upcoming.length === 0 && <div className="p-6 text-center text-xs text-muted-foreground">No upcoming schedules. Add one from a flag's editor → Schedule tab.</div>}
+            {upcoming.map((s) => (
+              <div key={s.id} className="flex flex-wrap items-center justify-between gap-3 p-3 text-sm">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="rounded-md bg-blue-500/10 p-2 text-blue-500"><Clock className="h-3.5 w-3.5" /></div>
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{s.flag.name} <code className="ml-1 text-[10px] text-muted-foreground">{s.flag.key}</code></div>
+                    <div className="text-xs text-muted-foreground">
+                      {s.env.toUpperCase()} → {s.enabled ? `${s.rollout}%` : "OFF"} • {new Date(s.at).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button size="sm" variant="outline" onClick={() => applyNow(s.flag.id, s.id)} disabled={!perms.directProd}>Apply now</Button>
+                  <Button size="sm" variant="ghost" className="text-destructive" onClick={() => cancel(s.flag.id, s.id)}>Cancel</Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        {past.length > 0 && (
+          <div>
+            <div className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">Recently applied</div>
+            <div className="divide-y rounded-md border">
+              {past.slice(0, 8).map((s) => (
+                <div key={s.id} className="flex items-center justify-between p-3 text-xs">
+                  <div className="flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> {s.flag.name} — {s.env} {s.rollout}%</div>
+                  <div className="text-muted-foreground">{new Date(s.at).toLocaleString()}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ============== Approvals panel ============== */
+function ApprovalsPanel({ pending, flags, perms, onReview }: {
+  pending: PendingChange[]; flags: Flag[]; perms: typeof rolePermissions[Role];
+  onReview: (id: string, decision: "approve" | "reject", reason?: string) => void;
+}) {
+  const open = pending.filter((p) => p.status === "pending");
+  const closed = pending.filter((p) => p.status !== "pending");
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2"><GitPullRequest className="h-4 w-4" /> Pending approvals ({open.length})</CardTitle>
+          <CardDescription>
+            Production changes from non-admins are queued here. Approvers and admins can review and merge.
+            {!perms.approveProd && <span className="ml-1 text-amber-500">Your current role cannot approve.</span>}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {open.length === 0 && <div className="py-8 text-center text-xs text-muted-foreground">No pending changes.</div>}
+          {open.map((p) => {
+            const f = flags.find((x) => x.id === p.flagId);
+            return (
+              <div key={p.id} className="rounded-md border p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-medium text-sm">{f?.name ?? p.flagId} <code className="ml-1 text-[10px] text-muted-foreground">{f?.key}</code></div>
+                    <div className="text-xs text-muted-foreground mt-0.5">{p.summary}</div>
+                    <div className="text-[10px] text-muted-foreground mt-1">Requested by {p.requestedBy} • {p.requestedAt}</div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button size="sm" variant="outline" className="gap-1 border-emerald-500/30 text-emerald-500" disabled={!perms.approveProd}
+                      onClick={() => onReview(p.id, "approve")}><Check className="h-3.5 w-3.5" /> Approve</Button>
+                    <Button size="sm" variant="outline" className="gap-1 border-rose-500/30 text-rose-500" disabled={!perms.approveProd}
+                      onClick={() => onReview(p.id, "reject", "rejected via UI")}><X className="h-3.5 w-3.5" /> Reject</Button>
+                  </div>
+                </div>
+                {p.patch.envs && (
+                  <pre className="mt-2 overflow-x-auto rounded bg-muted/30 p-2 text-[11px] font-mono">
+{JSON.stringify(p.patch.envs, null, 2)}
+                  </pre>
+                )}
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+      {closed.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle className="text-base">Recent decisions</CardTitle></CardHeader>
+          <CardContent>
+            <div className="divide-y rounded-md border">
+              {closed.slice(0, 10).map((p) => {
+                const f = flags.find((x) => x.id === p.flagId);
+                return (
+                  <div key={p.id} className="flex items-center justify-between p-3 text-xs">
+                    <div className="flex items-center gap-2">
+                      {p.status === "approved"
+                        ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                        : <X className="h-3.5 w-3.5 text-rose-500" />}
+                      <span className="font-medium">{f?.name ?? p.flagId}</span>
+                      <span className="text-muted-foreground">— {p.summary}</span>
+                    </div>
+                    <div className="text-right text-muted-foreground">
+                      <div>{p.reviewedBy}</div><div>{p.reviewedAt}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+/* ============== Per-user inspector ============== */
+function FlagInspectorPanel({ flags }: { flags: Flag[] }) {
+  const [userId, setUserId] = useState("user_42_priya");
+  const [audience, setAudience] = useState("Founders");
+  const [plan, setPlan] = useState("Pro");
+  const [region, setRegion] = useState("India");
+  const [platform, setPlatform] = useState("Web");
+  const [env, setEnv] = useState<Env>("prod");
+
+  const results = useMemo(() => flags.map((f) => ({
+    flag: f, ...evaluateFlag(f, userId, { audience, plan, region, platform, env }),
+  })), [flags, userId, audience, plan, region, platform, env]);
+
+  const exposed = results.filter((r) => r.enabled);
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2"><UserSearch className="h-4 w-4" /> Per-user flag inspector</CardTitle>
+        <CardDescription>See exactly which flags and variants a given user is exposed to right now.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-2 md:grid-cols-6">
+          <div className="space-y-1 md:col-span-2"><Label className="text-[10px] uppercase">User ID</Label><Input value={userId} onChange={(e) => setUserId(e.target.value)} className="h-8 font-mono" /></div>
+          <div className="space-y-1"><Label className="text-[10px] uppercase">Audience</Label>
+            <Select value={audience} onValueChange={setAudience}><SelectTrigger className="h-8"><SelectValue /></SelectTrigger><SelectContent>{allAudiences.map((a) => (<SelectItem key={a} value={a}>{a}</SelectItem>))}</SelectContent></Select>
+          </div>
+          <div className="space-y-1"><Label className="text-[10px] uppercase">Plan</Label>
+            <Select value={plan} onValueChange={setPlan}><SelectTrigger className="h-8"><SelectValue /></SelectTrigger><SelectContent>{allPlans.map((a) => (<SelectItem key={a} value={a}>{a}</SelectItem>))}</SelectContent></Select>
+          </div>
+          <div className="space-y-1"><Label className="text-[10px] uppercase">Region</Label>
+            <Select value={region} onValueChange={setRegion}><SelectTrigger className="h-8"><SelectValue /></SelectTrigger><SelectContent>{allRegions.map((a) => (<SelectItem key={a} value={a}>{a}</SelectItem>))}</SelectContent></Select>
+          </div>
+          <div className="space-y-1"><Label className="text-[10px] uppercase">Platform</Label>
+            <Select value={platform} onValueChange={setPlatform}><SelectTrigger className="h-8"><SelectValue /></SelectTrigger><SelectContent>{allPlatforms.map((a) => (<SelectItem key={a} value={a}>{a}</SelectItem>))}</SelectContent></Select>
+          </div>
+          <div className="space-y-1"><Label className="text-[10px] uppercase">Env</Label>
+            <Select value={env} onValueChange={(v) => setEnv(v as Env)}><SelectTrigger className="h-8"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="dev">dev</SelectItem><SelectItem value="staging">staging</SelectItem><SelectItem value="prod">prod</SelectItem></SelectContent></Select>
+          </div>
+        </div>
+        <div className="rounded-md border bg-muted/20 p-3 text-xs">
+          <span className="text-muted-foreground">Exposure summary:</span> <b className="text-foreground">{exposed.length}</b> of {flags.length} flags active for this user in <b>{env}</b>.
+        </div>
+        <div className="divide-y rounded-md border">
+          {results.map(({ flag, enabled, variant, reason }) => (
+            <div key={flag.id} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
+              <div className="min-w-0 flex items-center gap-2">
+                {enabled
+                  ? <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                  : <X className="h-4 w-4 text-muted-foreground shrink-0" />}
+                <div className="min-w-0">
+                  <div className="font-medium truncate">{flag.name} <code className="ml-1 text-[10px] text-muted-foreground">{flag.key}</code></div>
+                  <div className="text-[11px] text-muted-foreground">{reason}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {variant && <Badge variant="outline" className="text-[10px] border-violet-500/30 bg-violet-500/10 text-violet-500">variant: {variant}</Badge>}
+                <Badge variant="outline" className={`text-[10px] ${enabled ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500" : "border-border text-muted-foreground"}`}>
+                  {enabled ? "ON" : "OFF"}
+                </Badge>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ============== API panel with live tester ============== */
+function FlagApiPanel({ flags }: { flags: Flag[] }) {
+  const [userId, setUserId] = useState("user_42_priya");
+  const [flagKey, setFlagKey] = useState(flags[0]?.key ?? "");
+  const flag = flags.find((f) => f.key === flagKey);
+  const result = flag ? evaluateFlag(flag, userId, { audience: "Founders", plan: "Pro", region: "India", platform: "Web", env: "prod" }) : null;
+
+  const apiResponse = flag && result ? {
+    flag: flag.key, userId, env: "prod",
+    enabled: result.enabled, variant: result.variant, reason: result.reason,
+    evaluatedAt: new Date().toISOString(),
+  } : null;
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2"><Code2 className="h-4 w-4" /> Evaluation API</CardTitle>
+          <CardDescription>Backend endpoint to evaluate a flag for a given user and return the active variant.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="rounded-md border bg-muted/30 p-3 text-xs font-mono">
+            <div><Badge className="mr-2 bg-emerald-500/10 text-emerald-500 border-emerald-500/20" variant="outline">GET</Badge> /api/flags/evaluate?key={`{flagKey}`}&userId={`{userId}`}&env=prod</div>
+            <div className="mt-1"><Badge className="mr-2 bg-blue-500/10 text-blue-500 border-blue-500/20" variant="outline">POST</Badge> /api/flags/evaluate-batch &nbsp; <span className="text-muted-foreground">{`{ userId, context: { audience, plan, region, platform } }`}</span></div>
+          </div>
+          <pre className="overflow-x-auto rounded-md border bg-muted/30 p-4 text-xs leading-relaxed">
+{`// Server (TanStack Start server function)
+import { createServerFn } from "@tanstack/react-start";
+import { evaluateFlag } from "@/lib/flags.server";
+
+export const evalFlag = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; userId: string; env?: string }) => d)
+  .handler(async ({ data }) => evaluateFlag(data.key, data.userId, data.env ?? "prod"));
+
+// Client
+import { useFlag } from "@/lib/flags";
+const { enabled, variant } = useFlag("ai_match_v2");`}
+          </pre>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Try it live</CardTitle>
+          <CardDescription>Evaluation is sticky per user-id, hashed with the flag key for stable bucketing.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid gap-2 md:grid-cols-2">
+            <div className="space-y-1"><Label className="text-[10px] uppercase">Flag key</Label>
+              <Select value={flagKey} onValueChange={setFlagKey}>
+                <SelectTrigger className="h-8 font-mono"><SelectValue /></SelectTrigger>
+                <SelectContent>{flags.map((f) => (<SelectItem key={f.id} value={f.key}>{f.key}</SelectItem>))}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1"><Label className="text-[10px] uppercase">User ID</Label>
+              <Input value={userId} onChange={(e) => setUserId(e.target.value)} className="h-8 font-mono" />
+            </div>
+          </div>
+          <pre className="overflow-x-auto rounded-md border bg-muted/30 p-3 text-xs leading-relaxed">
+{apiResponse ? JSON.stringify(apiResponse, null, 2) : "// pick a flag"}
+          </pre>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
