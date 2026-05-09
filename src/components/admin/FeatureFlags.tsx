@@ -969,3 +969,294 @@ function FlagEditor({ open, flag, creating, onClose, onSave }: {
     </Dialog>
   );
 }
+
+/* ============== Scheduled rollouts panel ============== */
+function ScheduledRolloutsPanel({ flags, setFlags, perms, log }: {
+  flags: Flag[]; setFlags: React.Dispatch<React.SetStateAction<Flag[]>>;
+  perms: typeof rolePermissions[Role]; log: (id: string, action: string, detail: string) => void;
+}) {
+  const all = flags.flatMap((f) => (f.schedules ?? []).map((s) => ({ ...s, flag: f })));
+  const upcoming = all.filter((s) => !s.applied).sort((a, b) => a.at.localeCompare(b.at));
+  const past = all.filter((s) => s.applied).sort((a, b) => b.at.localeCompare(a.at));
+
+  const cancel = (flagId: string, scheduleId: string) => {
+    if (!perms.edit) { toast.error("No permission"); return; }
+    setFlags((fs) => fs.map((f) => f.id === flagId ? { ...f, schedules: (f.schedules ?? []).filter((s) => s.id !== scheduleId) } : f));
+    log(flagId, "schedule-cancelled", scheduleId);
+    toast.success("Schedule cancelled");
+  };
+
+  const applyNow = (flagId: string, scheduleId: string) => {
+    if (!perms.directProd) { toast.error("Only admins can force-apply"); return; }
+    setFlags((fs) => fs.map((f) => {
+      if (f.id !== flagId) return f;
+      const s = (f.schedules ?? []).find((x) => x.id === scheduleId);
+      if (!s) return f;
+      return {
+        ...f,
+        envs: { ...f.envs, [s.env]: { enabled: s.enabled, rollout: s.rollout } },
+        schedules: (f.schedules ?? []).map((x) => x.id === scheduleId ? { ...x, applied: true } : x),
+      };
+    }));
+    log(flagId, "schedule-forced", scheduleId);
+    toast.success("Applied immediately");
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2"><Calendar className="h-4 w-4" /> Scheduled rollouts</CardTitle>
+        <CardDescription>Flags activate or change rollout automatically at a specific date and time.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div>
+          <div className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">Upcoming ({upcoming.length})</div>
+          <div className="divide-y rounded-md border">
+            {upcoming.length === 0 && <div className="p-6 text-center text-xs text-muted-foreground">No upcoming schedules. Add one from a flag's editor → Schedule tab.</div>}
+            {upcoming.map((s) => (
+              <div key={s.id} className="flex flex-wrap items-center justify-between gap-3 p-3 text-sm">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="rounded-md bg-blue-500/10 p-2 text-blue-500"><Clock className="h-3.5 w-3.5" /></div>
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{s.flag.name} <code className="ml-1 text-[10px] text-muted-foreground">{s.flag.key}</code></div>
+                    <div className="text-xs text-muted-foreground">
+                      {s.env.toUpperCase()} → {s.enabled ? `${s.rollout}%` : "OFF"} • {new Date(s.at).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button size="sm" variant="outline" onClick={() => applyNow(s.flag.id, s.id)} disabled={!perms.directProd}>Apply now</Button>
+                  <Button size="sm" variant="ghost" className="text-destructive" onClick={() => cancel(s.flag.id, s.id)}>Cancel</Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        {past.length > 0 && (
+          <div>
+            <div className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">Recently applied</div>
+            <div className="divide-y rounded-md border">
+              {past.slice(0, 8).map((s) => (
+                <div key={s.id} className="flex items-center justify-between p-3 text-xs">
+                  <div className="flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> {s.flag.name} — {s.env} {s.rollout}%</div>
+                  <div className="text-muted-foreground">{new Date(s.at).toLocaleString()}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ============== Approvals panel ============== */
+function ApprovalsPanel({ pending, flags, perms, onReview }: {
+  pending: PendingChange[]; flags: Flag[]; perms: typeof rolePermissions[Role];
+  onReview: (id: string, decision: "approve" | "reject", reason?: string) => void;
+}) {
+  const open = pending.filter((p) => p.status === "pending");
+  const closed = pending.filter((p) => p.status !== "pending");
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2"><GitPullRequest className="h-4 w-4" /> Pending approvals ({open.length})</CardTitle>
+          <CardDescription>
+            Production changes from non-admins are queued here. Approvers and admins can review and merge.
+            {!perms.approveProd && <span className="ml-1 text-amber-500">Your current role cannot approve.</span>}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {open.length === 0 && <div className="py-8 text-center text-xs text-muted-foreground">No pending changes.</div>}
+          {open.map((p) => {
+            const f = flags.find((x) => x.id === p.flagId);
+            return (
+              <div key={p.id} className="rounded-md border p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-medium text-sm">{f?.name ?? p.flagId} <code className="ml-1 text-[10px] text-muted-foreground">{f?.key}</code></div>
+                    <div className="text-xs text-muted-foreground mt-0.5">{p.summary}</div>
+                    <div className="text-[10px] text-muted-foreground mt-1">Requested by {p.requestedBy} • {p.requestedAt}</div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button size="sm" variant="outline" className="gap-1 border-emerald-500/30 text-emerald-500" disabled={!perms.approveProd}
+                      onClick={() => onReview(p.id, "approve")}><Check className="h-3.5 w-3.5" /> Approve</Button>
+                    <Button size="sm" variant="outline" className="gap-1 border-rose-500/30 text-rose-500" disabled={!perms.approveProd}
+                      onClick={() => onReview(p.id, "reject", "rejected via UI")}><X className="h-3.5 w-3.5" /> Reject</Button>
+                  </div>
+                </div>
+                {p.patch.envs && (
+                  <pre className="mt-2 overflow-x-auto rounded bg-muted/30 p-2 text-[11px] font-mono">
+{JSON.stringify(p.patch.envs, null, 2)}
+                  </pre>
+                )}
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+      {closed.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle className="text-base">Recent decisions</CardTitle></CardHeader>
+          <CardContent>
+            <div className="divide-y rounded-md border">
+              {closed.slice(0, 10).map((p) => {
+                const f = flags.find((x) => x.id === p.flagId);
+                return (
+                  <div key={p.id} className="flex items-center justify-between p-3 text-xs">
+                    <div className="flex items-center gap-2">
+                      {p.status === "approved"
+                        ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                        : <X className="h-3.5 w-3.5 text-rose-500" />}
+                      <span className="font-medium">{f?.name ?? p.flagId}</span>
+                      <span className="text-muted-foreground">— {p.summary}</span>
+                    </div>
+                    <div className="text-right text-muted-foreground">
+                      <div>{p.reviewedBy}</div><div>{p.reviewedAt}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+/* ============== Per-user inspector ============== */
+function FlagInspectorPanel({ flags }: { flags: Flag[] }) {
+  const [userId, setUserId] = useState("user_42_priya");
+  const [audience, setAudience] = useState("Founders");
+  const [plan, setPlan] = useState("Pro");
+  const [region, setRegion] = useState("India");
+  const [platform, setPlatform] = useState("Web");
+  const [env, setEnv] = useState<Env>("prod");
+
+  const results = useMemo(() => flags.map((f) => ({
+    flag: f, ...evaluateFlag(f, userId, { audience, plan, region, platform, env }),
+  })), [flags, userId, audience, plan, region, platform, env]);
+
+  const exposed = results.filter((r) => r.enabled);
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2"><UserSearch className="h-4 w-4" /> Per-user flag inspector</CardTitle>
+        <CardDescription>See exactly which flags and variants a given user is exposed to right now.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-2 md:grid-cols-6">
+          <div className="space-y-1 md:col-span-2"><Label className="text-[10px] uppercase">User ID</Label><Input value={userId} onChange={(e) => setUserId(e.target.value)} className="h-8 font-mono" /></div>
+          <div className="space-y-1"><Label className="text-[10px] uppercase">Audience</Label>
+            <Select value={audience} onValueChange={setAudience}><SelectTrigger className="h-8"><SelectValue /></SelectTrigger><SelectContent>{allAudiences.map((a) => (<SelectItem key={a} value={a}>{a}</SelectItem>))}</SelectContent></Select>
+          </div>
+          <div className="space-y-1"><Label className="text-[10px] uppercase">Plan</Label>
+            <Select value={plan} onValueChange={setPlan}><SelectTrigger className="h-8"><SelectValue /></SelectTrigger><SelectContent>{allPlans.map((a) => (<SelectItem key={a} value={a}>{a}</SelectItem>))}</SelectContent></Select>
+          </div>
+          <div className="space-y-1"><Label className="text-[10px] uppercase">Region</Label>
+            <Select value={region} onValueChange={setRegion}><SelectTrigger className="h-8"><SelectValue /></SelectTrigger><SelectContent>{allRegions.map((a) => (<SelectItem key={a} value={a}>{a}</SelectItem>))}</SelectContent></Select>
+          </div>
+          <div className="space-y-1"><Label className="text-[10px] uppercase">Platform</Label>
+            <Select value={platform} onValueChange={setPlatform}><SelectTrigger className="h-8"><SelectValue /></SelectTrigger><SelectContent>{allPlatforms.map((a) => (<SelectItem key={a} value={a}>{a}</SelectItem>))}</SelectContent></Select>
+          </div>
+          <div className="space-y-1"><Label className="text-[10px] uppercase">Env</Label>
+            <Select value={env} onValueChange={(v) => setEnv(v as Env)}><SelectTrigger className="h-8"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="dev">dev</SelectItem><SelectItem value="staging">staging</SelectItem><SelectItem value="prod">prod</SelectItem></SelectContent></Select>
+          </div>
+        </div>
+        <div className="rounded-md border bg-muted/20 p-3 text-xs">
+          <span className="text-muted-foreground">Exposure summary:</span> <b className="text-foreground">{exposed.length}</b> of {flags.length} flags active for this user in <b>{env}</b>.
+        </div>
+        <div className="divide-y rounded-md border">
+          {results.map(({ flag, enabled, variant, reason }) => (
+            <div key={flag.id} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
+              <div className="min-w-0 flex items-center gap-2">
+                {enabled
+                  ? <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                  : <X className="h-4 w-4 text-muted-foreground shrink-0" />}
+                <div className="min-w-0">
+                  <div className="font-medium truncate">{flag.name} <code className="ml-1 text-[10px] text-muted-foreground">{flag.key}</code></div>
+                  <div className="text-[11px] text-muted-foreground">{reason}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {variant && <Badge variant="outline" className="text-[10px] border-violet-500/30 bg-violet-500/10 text-violet-500">variant: {variant}</Badge>}
+                <Badge variant="outline" className={`text-[10px] ${enabled ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500" : "border-border text-muted-foreground"}`}>
+                  {enabled ? "ON" : "OFF"}
+                </Badge>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ============== API panel with live tester ============== */
+function FlagApiPanel({ flags }: { flags: Flag[] }) {
+  const [userId, setUserId] = useState("user_42_priya");
+  const [flagKey, setFlagKey] = useState(flags[0]?.key ?? "");
+  const flag = flags.find((f) => f.key === flagKey);
+  const result = flag ? evaluateFlag(flag, userId, { audience: "Founders", plan: "Pro", region: "India", platform: "Web", env: "prod" }) : null;
+
+  const apiResponse = flag && result ? {
+    flag: flag.key, userId, env: "prod",
+    enabled: result.enabled, variant: result.variant, reason: result.reason,
+    evaluatedAt: new Date().toISOString(),
+  } : null;
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2"><Code2 className="h-4 w-4" /> Evaluation API</CardTitle>
+          <CardDescription>Backend endpoint to evaluate a flag for a given user and return the active variant.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="rounded-md border bg-muted/30 p-3 text-xs font-mono">
+            <div><Badge className="mr-2 bg-emerald-500/10 text-emerald-500 border-emerald-500/20" variant="outline">GET</Badge> /api/flags/evaluate?key={`{flagKey}`}&userId={`{userId}`}&env=prod</div>
+            <div className="mt-1"><Badge className="mr-2 bg-blue-500/10 text-blue-500 border-blue-500/20" variant="outline">POST</Badge> /api/flags/evaluate-batch &nbsp; <span className="text-muted-foreground">{`{ userId, context: { audience, plan, region, platform } }`}</span></div>
+          </div>
+          <pre className="overflow-x-auto rounded-md border bg-muted/30 p-4 text-xs leading-relaxed">
+{`// Server (TanStack Start server function)
+import { createServerFn } from "@tanstack/react-start";
+import { evaluateFlag } from "@/lib/flags.server";
+
+export const evalFlag = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; userId: string; env?: string }) => d)
+  .handler(async ({ data }) => evaluateFlag(data.key, data.userId, data.env ?? "prod"));
+
+// Client
+import { useFlag } from "@/lib/flags";
+const { enabled, variant } = useFlag("ai_match_v2");`}
+          </pre>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Try it live</CardTitle>
+          <CardDescription>Evaluation is sticky per user-id, hashed with the flag key for stable bucketing.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid gap-2 md:grid-cols-2">
+            <div className="space-y-1"><Label className="text-[10px] uppercase">Flag key</Label>
+              <Select value={flagKey} onValueChange={setFlagKey}>
+                <SelectTrigger className="h-8 font-mono"><SelectValue /></SelectTrigger>
+                <SelectContent>{flags.map((f) => (<SelectItem key={f.id} value={f.key}>{f.key}</SelectItem>))}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1"><Label className="text-[10px] uppercase">User ID</Label>
+              <Input value={userId} onChange={(e) => setUserId(e.target.value)} className="h-8 font-mono" />
+            </div>
+          </div>
+          <pre className="overflow-x-auto rounded-md border bg-muted/30 p-3 text-xs leading-relaxed">
+{apiResponse ? JSON.stringify(apiResponse, null, 2) : "// pick a flag"}
+          </pre>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
