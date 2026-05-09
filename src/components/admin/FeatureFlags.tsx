@@ -673,7 +673,18 @@ export function FeatureFlags() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="audit" className="space-y-4">
+        <TabsContent value="schedules" className="space-y-4">
+          <ScheduledRolloutsPanel flags={flags} setFlags={setFlags} perms={perms} log={log} />
+        </TabsContent>
+
+        <TabsContent value="approvals" className="space-y-4">
+          <ApprovalsPanel pending={pending} flags={flags} perms={perms} onReview={reviewChange} />
+        </TabsContent>
+
+        <TabsContent value="inspector" className="space-y-4">
+          <FlagInspectorPanel flags={flags} />
+        </TabsContent>
+
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Audit log</CardTitle>
