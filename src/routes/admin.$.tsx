@@ -11,6 +11,7 @@ import { LanguageManagement } from "@/components/admin/LanguageManagement";
 import { TimezoneManagement } from "@/components/admin/TimezoneManagement";
 import { StakeholderTypes } from "@/components/admin/StakeholderTypes";
 import { IndustryTags } from "@/components/admin/IndustryTags";
+import { SkillTags } from "@/components/admin/SkillTags";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
@@ -26,6 +27,7 @@ function AdminGenericPage() {
   if (slug === "settings/timezone") return <TimezoneManagement />;
   if (slug === "settings/stakeholder-types") return <StakeholderTypes />;
   if (slug === "settings/industry-tags") return <IndustryTags />;
+  if (slug === "settings/skill-tags") return <SkillTags />;
 
   const found = findPage(slug);
 
