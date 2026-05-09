@@ -397,6 +397,20 @@ export function FeatureFlags() {
 
   const saveFlag = (f: Flag) => {
     const isNew = !flags.find((x) => x.id === f.id);
+    const existing = flags.find((x) => x.id === f.id);
+    if (!isNew && existing && !perms.directProd) {
+      // If prod env changed, route through approval
+      const prodChanged = existing.envs.prod.enabled !== f.envs.prod.enabled || existing.envs.prod.rollout !== f.envs.prod.rollout;
+      if (prodChanged) {
+        // Save non-prod portion, queue prod
+        const nonProd: Partial<Flag> = { ...f, envs: { ...f.envs, prod: existing.envs.prod } };
+        setFlags((fs) => fs.map((x) => x.id === f.id ? { ...x, ...nonProd, updatedAt: new Date().toISOString().slice(0,10) } : x));
+        requestChange(existing, `Prod ${existing.envs.prod.rollout}% → ${f.envs.prod.rollout}% (${f.envs.prod.enabled ? "ON" : "OFF"})`, { envs: f.envs });
+        setEditing(null); setCreating(false);
+        return;
+      }
+    }
+    if (!perms.edit && !perms.create) { toast.error(`Your role (${role}) cannot save flags`); return; }
     if (isNew) setFlags((fs) => [...fs, f]);
     else setFlags((fs) => fs.map((x) => x.id === f.id ? f : x));
     log(f.id, isNew ? "created" : "updated", f.key);
