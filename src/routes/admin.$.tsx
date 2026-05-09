@@ -39,6 +39,7 @@ function AdminGenericPage() {
   if (slug === "settings/legal") return <LegalDocuments />;
   if (slug === "settings/feature-flags") return <FeatureFlags />;
   if (slug === "settings/notification-providers") return <NotificationProviders />;
+  if (slug === "settings/payment-gateways") return <PaymentGateways />;
 
   const found = findPage(slug);
 
