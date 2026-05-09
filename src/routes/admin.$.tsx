@@ -26,6 +26,7 @@ import { ConsentBanner } from "@/components/admin/ConsentBanner";
 import { DomainsDNS } from "@/components/admin/DomainsDNS";
 import { AbuseRules } from "@/components/admin/AbuseRules";
 import { SeoMetadata } from "@/components/admin/SeoMetadata";
+import { UsersList } from "@/components/admin/UsersList";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
@@ -50,6 +51,7 @@ function AdminGenericPage() {
   if (slug === "settings/payment-gateways") return <PaymentGateways />;
   if (slug === "settings/payment-analytics") return <PaymentAnalytics />;
   if (slug === "settings/integrations") return <Integrations />;
+  if (slug === "users/list") return <UsersList />;
   if (slug === "settings/partner-apps") return <PartnerApps />;
   if (slug === "settings/maintenance") return <MaintenanceMode />;
   if (slug === "settings/consent") return <ConsentBanner />;
