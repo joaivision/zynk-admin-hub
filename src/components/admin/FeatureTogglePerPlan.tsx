@@ -242,7 +242,7 @@ export function FeatureTogglePerPlan() {
                     const visible = group.features.filter((f) => !query || f.name.toLowerCase().includes(query.toLowerCase()) || group.group.toLowerCase().includes(query.toLowerCase()));
                     if (!visible.length) return null;
                     return (
-                      <>
+                      <FragmentWithKey key={`grp-${gi}`}>
                         <tr key={`g-${gi}`} className="bg-muted/40">
                           <td colSpan={PLANS.length + 1} className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                             {group.group}
@@ -283,7 +283,7 @@ export function FeatureTogglePerPlan() {
                             </tr>
                           );
                         })}
-                      </>
+                      </FragmentWithKey>
                     );
                   })}
                 </tbody>
