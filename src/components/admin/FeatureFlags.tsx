@@ -447,13 +447,26 @@ export function FeatureFlags() {
             Ship safely. Control releases, experiments, kill-switches and per-plan permissions across Zynk.ing.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 rounded-md border bg-muted/30 px-2 py-1 text-xs">
+            <UserCheck className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-muted-foreground">Acting as</span>
+            <Select value={role} onValueChange={(v) => setRole(v as Role)}>
+              <SelectTrigger className="h-7 w-28 border-0 bg-transparent px-1 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="viewer">Viewer</SelectItem>
+                <SelectItem value="editor">Editor</SelectItem>
+                <SelectItem value="approver">Approver</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <Button variant="outline" size="sm" onClick={exportJson} className="gap-1"><Download className="h-4 w-4" /> Export</Button>
           <Button variant="outline" size="sm" className="gap-1"><Upload className="h-4 w-4" /> Import</Button>
-          <Button variant="outline" size="sm" onClick={() => setEmergencyOpen(true)} className="gap-1 border-rose-500/30 text-rose-500 hover:bg-rose-500/10">
+          <Button variant="outline" size="sm" disabled={!perms.emergency} onClick={() => setEmergencyOpen(true)} className="gap-1 border-rose-500/30 text-rose-500 hover:bg-rose-500/10 disabled:opacity-40">
             <ShieldAlert className="h-4 w-4" /> Emergency stop
           </Button>
-          <Button size="sm" onClick={() => setCreating(true)} className="gap-1"><Plus className="h-4 w-4" /> New flag</Button>
+          <Button size="sm" disabled={!perms.create} onClick={() => setCreating(true)} className="gap-1"><Plus className="h-4 w-4" /> New flag</Button>
         </div>
       </div>
 
