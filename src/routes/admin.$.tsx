@@ -18,6 +18,7 @@ import { LegalDocuments } from "@/components/admin/LegalDocuments";
 import { FeatureFlags } from "@/components/admin/FeatureFlags";
 import { NotificationProviders } from "@/components/admin/NotificationProviders";
 import { PaymentGateways } from "@/components/admin/PaymentGateways";
+import { PaymentAnalytics } from "@/components/admin/PaymentAnalytics";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
@@ -40,6 +41,7 @@ function AdminGenericPage() {
   if (slug === "settings/feature-flags") return <FeatureFlags />;
   if (slug === "settings/notification-providers") return <NotificationProviders />;
   if (slug === "settings/payment-gateways") return <PaymentGateways />;
+  if (slug === "settings/payment-analytics") return <PaymentAnalytics />;
 
   const found = findPage(slug);
 
