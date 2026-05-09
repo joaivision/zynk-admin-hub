@@ -717,32 +717,7 @@ export function FeatureFlags() {
         </TabsContent>
 
         <TabsContent value="docs" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Integration snippet</CardTitle>
-              <CardDescription>Drop-in evaluation API for any Zynk.ing surface.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <pre className="overflow-x-auto rounded-md border bg-muted/30 p-4 text-xs leading-relaxed">
-{`import { useFlag } from "@/lib/flags";
-
-const matchV2 = useFlag("ai_match_v2");
-if (matchV2.enabled) {
-  // route through new engine
-}
-
-// Variants
-const { variant } = useFlag("ai_pitch_coach");
-if (variant === "coach") showCoach();
-
-// Numeric config
-const cap = useFlag<number>("max_swipes_per_day", 20);`}
-              </pre>
-              <p className="mt-3 text-xs text-muted-foreground">
-                Evaluation is sticky per user-id, hashed with the flag key for stable bucketing.
-              </p>
-            </CardContent>
-          </Card>
+          <FlagApiPanel flags={flags} />
         </TabsContent>
       </Tabs>
 
