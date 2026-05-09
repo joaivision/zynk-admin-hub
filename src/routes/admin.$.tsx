@@ -17,6 +17,7 @@ import { PlatformBranding } from "@/components/admin/PlatformBranding";
 import { LegalDocuments } from "@/components/admin/LegalDocuments";
 import { FeatureFlags } from "@/components/admin/FeatureFlags";
 import { NotificationProviders } from "@/components/admin/NotificationProviders";
+import { PaymentGateways } from "@/components/admin/PaymentGateways";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
