@@ -34,6 +34,7 @@ import { SuspendReinstate } from "@/components/admin/SuspendReinstate";
 import { ResetPassword } from "@/components/admin/ResetPassword";
 import { InternalNotes } from "@/components/admin/InternalNotes";
 import { ExportUsers } from "@/components/admin/ExportUsers";
+import { PlanConfig } from "@/components/admin/PlanConfig";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
