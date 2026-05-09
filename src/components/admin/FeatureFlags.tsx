@@ -490,11 +490,21 @@ export function FeatureFlags() {
       </div>
 
       <Tabs defaultValue="flags">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="flags">All Flags</TabsTrigger>
           <TabsTrigger value="experiments">Experiments</TabsTrigger>
+          <TabsTrigger value="schedules" className="gap-1"><Calendar className="h-3.5 w-3.5" />Schedules</TabsTrigger>
+          <TabsTrigger value="approvals" className="gap-1">
+            <GitPullRequest className="h-3.5 w-3.5" />Approvals
+            {pending.filter((p) => p.status === "pending").length > 0 && (
+              <Badge variant="outline" className="ml-1 h-4 border-amber-500/30 bg-amber-500/10 px-1 text-[10px] text-amber-500">
+                {pending.filter((p) => p.status === "pending").length}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="inspector" className="gap-1"><UserSearch className="h-3.5 w-3.5" />Inspector</TabsTrigger>
           <TabsTrigger value="audit">Audit Log</TabsTrigger>
-          <TabsTrigger value="docs">Integration</TabsTrigger>
+          <TabsTrigger value="docs" className="gap-1"><Code2 className="h-3.5 w-3.5" />API</TabsTrigger>
         </TabsList>
 
         <TabsContent value="flags" className="space-y-4">
