@@ -11,6 +11,7 @@ import { LanguageManagement } from "@/components/admin/LanguageManagement";
 import { TimezoneManagement } from "@/components/admin/TimezoneManagement";
 import { StakeholderTypes } from "@/components/admin/StakeholderTypes";
 import { IndustryTags } from "@/components/admin/IndustryTags";
+import { SkillTags } from "@/components/admin/SkillTags";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
