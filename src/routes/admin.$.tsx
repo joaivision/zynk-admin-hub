@@ -14,6 +14,7 @@ import { IndustryTags } from "@/components/admin/IndustryTags";
 import { SkillTags } from "@/components/admin/SkillTags";
 import { IntentOptions } from "@/components/admin/IntentOptions";
 import { PlatformBranding } from "@/components/admin/PlatformBranding";
+import { LegalDocuments } from "@/components/admin/LegalDocuments";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
@@ -32,6 +33,7 @@ function AdminGenericPage() {
   if (slug === "settings/skill-tags") return <SkillTags />;
   if (slug === "settings/intent-options") return <IntentOptions />;
   if (slug === "settings/platform-branding") return <PlatformBranding />;
+  if (slug === "settings/legal") return <LegalDocuments />;
 
   const found = findPage(slug);
 
