@@ -550,7 +550,7 @@ export function Integrations() {
     if (filterAuth !== "all" && i.authMethod !== filterAuth) return false;
     if (search) {
       const q = search.toLowerCase();
-      if (![i.name, i.vendor, i.description, ...i.features].some((s) => s.toLowerCase().includes(q))) return false;
+      if (![i.name, i.vendor, i.description ?? "", ...i.features].some((s) => s.toLowerCase().includes(q))) return false;
     }
     return true;
   }), [items, search, filterCat, filterStatus, filterAuth]);
@@ -563,13 +563,13 @@ export function Integrations() {
     return { connected, available: items.length, attention, events, errors };
   }, [items]);
 
-  const grouped = useMemo(() => {
-    const map = new Map<Category, Integration[]>();
+  const grouped = useMemo<Array<[Category, Integration[]]>>(() => {
+    const map: Record<string, Integration[]> = {};
     filtered.forEach((i) => {
-      if (!map.has(i.category)) map.set(i.category, []);
-      map.get(i.category)!.push(i);
+      (map[i.category] ||= []).push(i);
     });
-    return Array.from(map.entries()).sort((a, b) => cat[a[0]].label.localeCompare(cat[b[0]].label));
+    return (Object.entries(map) as Array<[Category, Integration[]]>)
+      .sort((a, b) => cat[a[0]].label.localeCompare(cat[b[0]].label));
   }, [filtered]);
 
   const toggle = (id: string, next: boolean) => {
