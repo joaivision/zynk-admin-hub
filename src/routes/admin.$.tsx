@@ -29,6 +29,7 @@ function AdminGenericPage() {
   if (slug === "settings/stakeholder-types") return <StakeholderTypes />;
   if (slug === "settings/industry-tags") return <IndustryTags />;
   if (slug === "settings/skill-tags") return <SkillTags />;
+  if (slug === "settings/intent-options") return <IntentOptions />;
 
   const found = findPage(slug);
 
