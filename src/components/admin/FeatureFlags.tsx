@@ -260,6 +260,8 @@ function evaluateFlag(flag: Flag, userId: string, ctx: { audience: string; plan:
 export function FeatureFlags() {
   const [flags, setFlags] = useState<Flag[]>(seedFlags);
   const [audit, setAudit] = useState<AuditEntry[]>(seedAudit);
+  const [pending, setPending] = useState<PendingChange[]>(seedPending);
+  const [role, setRole] = useState<Role>("admin");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -270,6 +272,11 @@ export function FeatureFlags() {
   const [historyFlag, setHistoryFlag] = useState<Flag | null>(null);
   const [deleteFlag, setDeleteFlag] = useState<Flag | null>(null);
   const [emergencyOpen, setEmergencyOpen] = useState(false);
+  const perms = rolePermissions[role];
+  const requireRole = (allowed: boolean, action: string) => {
+    if (!allowed) { toast.error(`Your role (${role}) cannot ${action}`); return false; }
+    return true;
+  };
 
   const filtered = useMemo(() => flags.filter((f) => {
     if (typeFilter !== "all" && f.type !== typeFilter) return false;
