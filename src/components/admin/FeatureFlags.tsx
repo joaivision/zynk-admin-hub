@@ -308,6 +308,14 @@ export function FeatureFlags() {
   };
 
   const toggleEnv = (id: string, env: Env, enabled: boolean) => {
+    if (env === "prod" && !perms.directProd) {
+      const flag = flags.find((f) => f.id === id);
+      if (flag) {
+        requestChange(flag, `${enabled ? "Enable" : "Disable"} prod`, { envs: { ...flag.envs, prod: { ...flag.envs.prod, enabled, rollout: enabled ? Math.max(flag.envs.prod.rollout, 1) : 0 } } });
+      }
+      return;
+    }
+    if (!requireRole(perms.edit, "edit flags")) return;
     setFlags((fs) => fs.map((f) => {
       if (f.id !== id) return f;
       return { ...f, updatedAt: new Date().toISOString().slice(0,10), envs: { ...f.envs, [env]: { ...f.envs[env], enabled, rollout: enabled ? Math.max(f.envs[env].rollout, 1) : 0 } } };
@@ -317,11 +325,14 @@ export function FeatureFlags() {
   };
 
   const setRollout = (id: string, env: Env, rollout: number) => {
+    if (env === "prod" && !perms.directProd) return; // silently block; will require approval via editor
+    if (!perms.edit) return;
     setFlags((fs) => fs.map((f) => f.id === id ? { ...f, updatedAt: new Date().toISOString().slice(0,10), envs: { ...f.envs, [env]: { enabled: rollout > 0, rollout } } } : f));
   };
 
   const bulk = (action: "pause" | "resume" | "archive" | "delete") => {
     if (!selected.length) return;
+    if (!requireRole(perms.pause, "perform bulk actions")) return;
     if (action === "delete") {
       setFlags((fs) => fs.filter((f) => !selected.includes(f.id)));
       toast.success(`Deleted ${selected.length} flags`);
@@ -332,6 +343,57 @@ export function FeatureFlags() {
     }
     setSelected([]);
   };
+
+  const requestChange = (flag: Flag, summary: string, patch: Partial<Flag>) => {
+    if (!requireRole(perms.edit, "request changes")) return;
+    const id = `p${Date.now()}`;
+    setPending((p) => [{ id, flagId: flag.id, requestedBy: "you@zynk.ing", requestedAt: new Date().toISOString().slice(0,16).replace("T"," "), summary, patch, status: "pending" }, ...p]);
+    log(flag.id, "change-requested", summary);
+    toast.success("Change submitted for approval");
+  };
+
+  const reviewChange = (id: string, decision: "approve" | "reject", reason?: string) => {
+    if (!requireRole(perms.approveProd, "approve changes")) return;
+    setPending((ps) => ps.map((p) => {
+      if (p.id !== id) return p;
+      if (decision === "approve") {
+        setFlags((fs) => fs.map((f) => f.id === p.flagId ? { ...f, ...p.patch, updatedAt: new Date().toISOString().slice(0,10) } : f));
+        log(p.flagId, "approved", p.summary);
+        toast.success("Change approved & live");
+      } else {
+        log(p.flagId, "rejected", `${p.summary} (${reason || "no reason"})`);
+        toast.success("Change rejected");
+      }
+      return { ...p, status: decision === "approve" ? "approved" : "rejected", reviewedBy: "you@zynk.ing", reviewedAt: new Date().toISOString().slice(0,16).replace("T"," "), reason };
+    }));
+  };
+
+  // Scheduled rollouts: tick every 30s, apply due schedules
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date();
+      setFlags((fs) => fs.map((f) => {
+        if (!f.schedules?.length) return f;
+        let changed = false;
+        const newEnvs = { ...f.envs };
+        const newSchedules = f.schedules.map((s) => {
+          if (!s.applied && new Date(s.at) <= now) {
+            newEnvs[s.env] = { enabled: s.enabled, rollout: s.rollout };
+            changed = true;
+            log(f.id, "scheduled", `${s.env} → ${s.enabled ? `${s.rollout}%` : "OFF"} (auto)`);
+            return { ...s, applied: true };
+          }
+          return s;
+        });
+        return changed ? { ...f, envs: newEnvs, schedules: newSchedules, updatedAt: new Date().toISOString().slice(0,10) } : f;
+      }));
+    };
+    tick();
+    const t = setInterval(tick, 30000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   const saveFlag = (f: Flag) => {
     const isNew = !flags.find((x) => x.id === f.id);
