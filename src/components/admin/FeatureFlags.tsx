@@ -24,6 +24,7 @@ import {
   Flag, Plus, Search, Download, Upload, Edit, Trash2, History, Eye, ChevronRight,
   Rocket, Beaker, Lock, AlertTriangle, Users, Globe, Smartphone, Monitor, Zap,
   Pause, PlayCircle, Copy, GitBranch, Activity, ShieldAlert, CheckCircle2,
+  Calendar, Clock, UserCheck, GitPullRequest, Code2, UserSearch, X, Check,
 } from "lucide-react";
 
 type Env = "dev" | "staging" | "prod";
