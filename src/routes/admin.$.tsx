@@ -34,6 +34,7 @@ import { SuspendReinstate } from "@/components/admin/SuspendReinstate";
 import { ResetPassword } from "@/components/admin/ResetPassword";
 import { InternalNotes } from "@/components/admin/InternalNotes";
 import { ExportUsers } from "@/components/admin/ExportUsers";
+import { PlanConfig } from "@/components/admin/PlanConfig";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
@@ -66,6 +67,7 @@ function AdminGenericPage() {
   if (slug === "users/reset-password") return <ResetPassword />;
   if (slug === "users/notes") return <InternalNotes />;
   if (slug === "users/export") return <ExportUsers />;
+  if (slug === "plans/config") return <PlanConfig />;
   if (slug === "settings/partner-apps") return <PartnerApps />;
   if (slug === "settings/maintenance") return <MaintenanceMode />;
   if (slug === "settings/consent") return <ConsentBanner />;
