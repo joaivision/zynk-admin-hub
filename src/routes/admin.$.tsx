@@ -38,6 +38,7 @@ import { PlanConfig } from "@/components/admin/PlanConfig";
 import { FeatureTogglePerPlan } from "@/components/admin/FeatureTogglePerPlan";
 import { PricingPerPlan } from "@/components/admin/PricingPerPlan";
 import { ActiveSubscriptions } from "@/components/admin/ActiveSubscriptions";
+import { SubscriptionDetail } from "@/components/admin/SubscriptionDetail";
 import { ExpertDirectory } from "@/components/admin/ExpertDirectory";
 import { ExpertOnboarding } from "@/components/admin/ExpertOnboarding";
 import { SessionBookings } from "@/components/admin/SessionBookings";
