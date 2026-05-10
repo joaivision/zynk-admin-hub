@@ -38,6 +38,7 @@ import { PlanConfig } from "@/components/admin/PlanConfig";
 import { FeatureTogglePerPlan } from "@/components/admin/FeatureTogglePerPlan";
 import { PricingPerPlan } from "@/components/admin/PricingPerPlan";
 import { ActiveSubscriptions } from "@/components/admin/ActiveSubscriptions";
+import { SubscriptionDetail } from "@/components/admin/SubscriptionDetail";
 import { ExpertDirectory } from "@/components/admin/ExpertDirectory";
 import { ExpertOnboarding } from "@/components/admin/ExpertOnboarding";
 import { SessionBookings } from "@/components/admin/SessionBookings";
@@ -80,6 +81,7 @@ function AdminGenericPage() {
   if (slug === "plans/features") return <FeatureTogglePerPlan />;
   if (slug === "plans/pricing") return <PricingPerPlan />;
   if (slug === "plans/subscriptions") return <ActiveSubscriptions />;
+  if (slug.startsWith("plans/subscriptions/")) return <SubscriptionDetail id={slug.split("/")[2]} />;
   if (slug === "mentorship/experts") return <ExpertDirectory />;
   if (slug === "mentorship/onboarding") return <ExpertOnboarding />;
   if (slug === "mentorship/bookings") return <SessionBookings />;
