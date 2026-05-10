@@ -66,6 +66,7 @@ export function MentorshipPayouts() {
           <TabsTrigger value="tax">Tax & Compliance</TabsTrigger>
           <TabsTrigger value="escrow">Escrow & Disputes</TabsTrigger>
           <TabsTrigger value="reports">Reports & Ledger</TabsTrigger>
+          <TabsTrigger value="recon">Reconciliation</TabsTrigger>
         </TabsList>
 
         <TabsContent value="payouts" className="space-y-3 mt-4">
