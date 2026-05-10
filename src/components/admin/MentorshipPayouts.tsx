@@ -66,6 +66,7 @@ export function MentorshipPayouts() {
           <TabsTrigger value="tax">Tax & Compliance</TabsTrigger>
           <TabsTrigger value="escrow">Escrow & Disputes</TabsTrigger>
           <TabsTrigger value="reports">Reports & Ledger</TabsTrigger>
+          <TabsTrigger value="recon">Reconciliation</TabsTrigger>
         </TabsList>
 
         <TabsContent value="payouts" className="space-y-3 mt-4">
@@ -262,6 +263,216 @@ export function MentorshipPayouts() {
                   <Button size="sm" variant="outline" className="gap-1"><Download className="h-3 w-3" /> CSV</Button>
                 </div>
               ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="recon" className="space-y-3 mt-4">
+          <Card>
+            <CardHeader>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2"><Calculator className="h-4 w-4" /> Commission & Payout Reconciliation</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-1">Match scheduled payouts to completed sessions across region, session type, and expert tier. Period: <span className="font-medium">Feb 1 – Feb 28, 2026</span></p>
+                </div>
+                <div className="flex gap-2">
+                  <Select defaultValue="feb26"><SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="feb26">Feb 2026</SelectItem>
+                      <SelectItem value="jan26">Jan 2026</SelectItem>
+                      <SelectItem value="q1-26">Q1 2026</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select defaultValue="all-region"><SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all-region">All Regions</SelectItem>
+                      <SelectItem value="na">North America</SelectItem>
+                      <SelectItem value="eu">Europe</SelectItem>
+                      <SelectItem value="mena">MENA</SelectItem>
+                      <SelectItem value="apac">APAC</SelectItem>
+                      <SelectItem value="latam">LATAM</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" variant="outline" className="gap-1"><RefreshCw className="h-3 w-3" /> Re-run</Button>
+                  <Button size="sm" className="gap-1"><Download className="h-3 w-3" /> Export</Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                {[
+                  { l: "Sessions completed", v: "8,427", h: "GMV $2.41M" },
+                  { l: "Commission earned", v: "$486k", h: "Avg take 20.2%" },
+                  { l: "Scheduled payouts", v: "$1.92M", h: "1,247 transfers" },
+                  { l: "Matched", v: "99.3%", h: "8,368 of 8,427", c: "text-emerald-600" },
+                  { l: "Variance", v: "$3,284", h: "59 exceptions", c: "text-amber-600" },
+                ].map(s => (
+                  <div key={s.l} className="rounded-lg border p-3">
+                    <div className="text-xs text-muted-foreground">{s.l}</div>
+                    <div className={`text-xl font-bold mt-1 ${s.c ?? ""}`}>{s.v}</div>
+                    <div className="text-[11px] text-muted-foreground">{s.h}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div>
+                <div className="text-sm font-medium mb-2 flex items-center gap-2"><Globe className="h-4 w-4" /> By Region</div>
+                <div className="overflow-x-auto rounded-lg border">
+                  <table className="w-full text-sm">
+                    <thead className="text-xs uppercase text-muted-foreground bg-muted/40">
+                      <tr>
+                        <th className="text-left py-2 px-3">Region</th>
+                        <th className="text-right">Sessions</th>
+                        <th className="text-right">GMV</th>
+                        <th className="text-right">Commission</th>
+                        <th className="text-right">Expert Net</th>
+                        <th className="text-right">Scheduled</th>
+                        <th className="text-right">Variance</th>
+                        <th className="text-right">Match %</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {[
+                        { r: "North America 🇺🇸🇨🇦", s: 2841, gmv: 924000, com: 184800, net: 739200, sch: 738900, v: 300, m: 99.8 },
+                        { r: "Europe 🇬🇧🇪🇺", s: 1928, gmv: 612000, com: 122400, net: 489600, sch: 489600, v: 0, m: 100 },
+                        { r: "MENA 🇦🇪🇸🇦", s: 1247, gmv: 398000, com: 79600, net: 318400, sch: 318400, v: 0, m: 100 },
+                        { r: "APAC 🇸🇬🇯🇵🇮🇳", s: 1684, gmv: 312000, com: 62400, net: 249600, sch: 247420, v: 2180, m: 98.4 },
+                        { r: "LATAM 🇧🇷🇲🇽", s: 727, gmv: 164000, com: 36800, net: 127200, sch: 126396, v: 804, m: 98.9 },
+                      ].map(row => (
+                        <tr key={row.r} className="hover:bg-muted/30">
+                          <td className="py-2 px-3 font-medium">{row.r}</td>
+                          <td className="text-right">{row.s.toLocaleString()}</td>
+                          <td className="text-right">${(row.gmv/1000).toFixed(0)}k</td>
+                          <td className="text-right">${(row.com/1000).toFixed(0)}k</td>
+                          <td className="text-right">${(row.net/1000).toFixed(0)}k</td>
+                          <td className="text-right">${(row.sch/1000).toFixed(0)}k</td>
+                          <td className={`text-right ${row.v > 0 ? "text-amber-600 font-medium" : "text-muted-foreground"}`}>{row.v > 0 ? `$${row.v}` : "—"}</td>
+                          <td className="text-right">{row.m}%</td>
+                          <td><Badge variant="outline" className={`text-[10px] ${row.v === 0 ? "bg-emerald-500/15 text-emerald-600" : "bg-amber-500/15 text-amber-600"}`}>{row.v === 0 ? "balanced" : "review"}</Badge></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm font-medium mb-2">By Session Type</div>
+                  <div className="overflow-x-auto rounded-lg border">
+                    <table className="w-full text-sm">
+                      <thead className="text-xs uppercase text-muted-foreground bg-muted/40">
+                        <tr>
+                          <th className="text-left py-2 px-3">Type</th>
+                          <th className="text-right">Sessions</th>
+                          <th className="text-right">Take %</th>
+                          <th className="text-right">Commission</th>
+                          <th className="text-right">Variance</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {[
+                          { t: "1:1 Coaching (60m)", s: 4218, tk: "20%", com: 246400, v: 1840 },
+                          { t: "1:1 Strategy (90m)", s: 1284, tk: "18%", com: 102600, v: 0 },
+                          { t: "Group Workshop", s: 1847, tk: "25%", com: 84300, v: 1244 },
+                          { t: "Async Review", s: 824, tk: "15%", com: 28400, v: 0 },
+                          { t: "Equity-for-Advice", s: 254, tk: "12%", com: 24300, v: 200 },
+                        ].map(row => (
+                          <tr key={row.t} className="hover:bg-muted/30">
+                            <td className="py-2 px-3">{row.t}</td>
+                            <td className="text-right">{row.s.toLocaleString()}</td>
+                            <td className="text-right">{row.tk}</td>
+                            <td className="text-right">${(row.com/1000).toFixed(1)}k</td>
+                            <td className={`text-right ${row.v > 0 ? "text-amber-600" : "text-muted-foreground"}`}>{row.v > 0 ? `$${row.v}` : "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-sm font-medium mb-2">By Expert Tier</div>
+                  <div className="overflow-x-auto rounded-lg border">
+                    <table className="w-full text-sm">
+                      <thead className="text-xs uppercase text-muted-foreground bg-muted/40">
+                        <tr>
+                          <th className="text-left py-2 px-3">Tier</th>
+                          <th className="text-right">Experts</th>
+                          <th className="text-right">Sessions</th>
+                          <th className="text-right">Net Payout</th>
+                          <th className="text-right">Variance</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {[
+                          { t: "Legend", e: 24, s: 482, np: 412000, v: 0 },
+                          { t: "Elite", e: 168, s: 1947, np: 624000, v: 0 },
+                          { t: "Pro", e: 524, s: 3284, np: 612000, v: 1840 },
+                          { t: "Verified", e: 1247, s: 2247, np: 248000, v: 1244 },
+                          { t: "Starter", e: 2840, s: 467, np: 28000, v: 200 },
+                        ].map(row => (
+                          <tr key={row.t} className="hover:bg-muted/30">
+                            <td className="py-2 px-3"><Badge variant="outline" className="text-[10px]">{row.t}</Badge></td>
+                            <td className="text-right">{row.e}</td>
+                            <td className="text-right">{row.s.toLocaleString()}</td>
+                            <td className="text-right">${(row.np/1000).toFixed(0)}k</td>
+                            <td className={`text-right ${row.v > 0 ? "text-amber-600" : "text-muted-foreground"}`}>{row.v > 0 ? `$${row.v}` : "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div className="text-sm font-medium mb-2 flex items-center gap-2"><AlertCircle className="h-4 w-4 text-amber-600" /> Exception Queue (59)</div>
+                <div className="overflow-x-auto rounded-lg border">
+                  <table className="w-full text-sm">
+                    <thead className="text-xs uppercase text-muted-foreground bg-muted/40">
+                      <tr>
+                        <th className="text-left py-2 px-3">Session ID</th>
+                        <th className="text-left">Expert</th>
+                        <th className="text-left">Type</th>
+                        <th className="text-left">Region</th>
+                        <th className="text-right">Expected</th>
+                        <th className="text-right">Scheduled</th>
+                        <th className="text-right">Δ</th>
+                        <th>Reason</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {[
+                        { id: "SES-94821", ex: "Priya Venkatesh", t: "Group Workshop", reg: "APAC 🇮🇳", exp: 1840, sch: 1640, reason: "PPP multiplier mismatch (0.45 vs 0.50)" },
+                        { id: "SES-94780", ex: "Carlos Mendes", t: "1:1 Coaching", reg: "LATAM 🇧🇷", exp: 240, sch: 196, reason: "FX rate drift (BRL/USD)" },
+                        { id: "SES-94712", ex: "James O'Connor", t: "Equity-for-Advice", reg: "EU 🇬🇧", exp: 0, sch: 0, reason: "Vesting milestone unmet · held in escrow" },
+                        { id: "SES-94688", ex: "Marcus Chen", t: "1:1 Strategy", reg: "APAC 🇸🇬", exp: 380, sch: 0, reason: "Refund issued · dispute window active" },
+                        { id: "SES-94612", ex: "Aisha Rahman", t: "Group Workshop", reg: "MENA 🇦🇪", exp: 620, sch: 558, reason: "Promo code LAUNCH50 applied post-booking" },
+                      ].map(r => (
+                        <tr key={r.id} className="hover:bg-muted/30">
+                          <td className="py-2 px-3 font-mono text-[11px]">{r.id}</td>
+                          <td>{r.ex}</td>
+                          <td className="text-xs">{r.t}</td>
+                          <td className="text-xs">{r.reg}</td>
+                          <td className="text-right">${r.exp}</td>
+                          <td className="text-right">${r.sch}</td>
+                          <td className={`text-right font-medium ${r.exp - r.sch !== 0 ? "text-amber-600" : ""}`}>${r.exp - r.sch}</td>
+                          <td className="text-xs text-muted-foreground">{r.reason}</td>
+                          <td className="text-right"><Button size="sm" variant="ghost" className="h-7">Resolve</Button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="rounded-lg border p-4 bg-muted/30 text-xs space-y-1">
+                <div className="font-medium text-sm flex items-center gap-2"><Shield className="h-4 w-4" /> Reconciliation Method</div>
+                <p className="text-muted-foreground">Two-way match: <span className="font-mono">sessions.completed_at</span> joined with <span className="font-mono">payouts.scheduled_for</span> on (expert_id, session_id). Commission recomputed from <span className="font-mono">tier × type × region.ppp</span> ledger and compared against scheduled net. Variance &gt; $1 or &gt; 0.5% flagged. Signed off nightly by Finance Ops; immutable hash-chained log retained 7 yrs (SOX §404).</p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
