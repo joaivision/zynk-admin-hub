@@ -46,6 +46,10 @@ import { MentorshipPricing } from "@/components/admin/MentorshipPricing";
 import { MentorshipReviews } from "@/components/admin/MentorshipReviews";
 import { MentorshipPayouts } from "@/components/admin/MentorshipPayouts";
 import { PromoCodeAnalytics } from "@/components/admin/PromoCodeAnalytics";
+import { CreateAdminAccounts } from "@/components/admin/CreateAdminAccounts";
+import { RolesPermissions } from "@/components/admin/RolesPermissions";
+import { AdminTwoFactor } from "@/components/admin/AdminTwoFactor";
+import { AdminActivityLogs } from "@/components/admin/AdminActivityLogs";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
