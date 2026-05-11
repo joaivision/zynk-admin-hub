@@ -83,6 +83,7 @@ function AdminGenericPage() {
   if (slug === "plans/pricing") return <PricingPerPlan />;
   if (slug === "plans/subscriptions") return <ActiveSubscriptions />;
   if (slug.startsWith("plans/subscriptions/")) return <SubscriptionDetail id={slug.split("/")[2]} />;
+  if (slug === "plans/promo-analytics" || slug === "plans/promos" || slug === "plans/discounts") return <PromoCodeAnalytics />;
   if (slug === "mentorship/experts") return <ExpertDirectory />;
   if (slug === "mentorship/onboarding") return <ExpertOnboarding />;
   if (slug === "mentorship/bookings") return <SessionBookings />;
