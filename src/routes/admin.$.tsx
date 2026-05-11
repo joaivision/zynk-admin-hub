@@ -46,6 +46,10 @@ import { MentorshipPricing } from "@/components/admin/MentorshipPricing";
 import { MentorshipReviews } from "@/components/admin/MentorshipReviews";
 import { MentorshipPayouts } from "@/components/admin/MentorshipPayouts";
 import { PromoCodeAnalytics } from "@/components/admin/PromoCodeAnalytics";
+import { CreateAdminAccounts } from "@/components/admin/CreateAdminAccounts";
+import { RolesPermissions } from "@/components/admin/RolesPermissions";
+import { AdminTwoFactor } from "@/components/admin/AdminTwoFactor";
+import { AdminActivityLogs } from "@/components/admin/AdminActivityLogs";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
@@ -90,6 +94,10 @@ function AdminGenericPage() {
   if (slug === "mentorship/pricing") return <MentorshipPricing />;
   if (slug === "mentorship/reviews") return <MentorshipReviews />;
   if (slug === "mentorship/payouts") return <MentorshipPayouts />;
+  if (slug === "admins/create") return <CreateAdminAccounts />;
+  if (slug === "admins/roles") return <RolesPermissions />;
+  if (slug === "admins/2fa") return <AdminTwoFactor />;
+  if (slug === "admins/logs") return <AdminActivityLogs />;
   if (slug === "settings/partner-apps") return <PartnerApps />;
   if (slug === "settings/maintenance") return <MaintenanceMode />;
   if (slug === "settings/consent") return <ConsentBanner />;
