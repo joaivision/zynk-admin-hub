@@ -94,6 +94,10 @@ function AdminGenericPage() {
   if (slug === "mentorship/pricing") return <MentorshipPricing />;
   if (slug === "mentorship/reviews") return <MentorshipReviews />;
   if (slug === "mentorship/payouts") return <MentorshipPayouts />;
+  if (slug === "admins/create") return <CreateAdminAccounts />;
+  if (slug === "admins/roles") return <RolesPermissions />;
+  if (slug === "admins/2fa") return <AdminTwoFactor />;
+  if (slug === "admins/logs") return <AdminActivityLogs />;
   if (slug === "settings/partner-apps") return <PartnerApps />;
   if (slug === "settings/maintenance") return <MaintenanceMode />;
   if (slug === "settings/consent") return <ConsentBanner />;
