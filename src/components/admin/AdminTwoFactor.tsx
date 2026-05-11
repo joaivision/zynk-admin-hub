@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
+
 import { ShieldCheck, Fingerprint, Smartphone, Key, AlertTriangle, RefreshCw, MapPin, Wifi, Clock, KeyRound } from "lucide-react";
 
 const METHODS = [
