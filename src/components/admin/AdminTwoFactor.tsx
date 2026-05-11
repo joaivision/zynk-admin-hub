@@ -220,5 +220,3 @@ function Step({ n, title, detail }: { n: string; title: string; detail: string }
     </div>
   );
 }
-// Progress unused import safeguard
-void Progress;
