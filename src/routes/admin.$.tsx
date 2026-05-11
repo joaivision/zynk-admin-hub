@@ -45,6 +45,7 @@ import { SessionBookings } from "@/components/admin/SessionBookings";
 import { MentorshipPricing } from "@/components/admin/MentorshipPricing";
 import { MentorshipReviews } from "@/components/admin/MentorshipReviews";
 import { MentorshipPayouts } from "@/components/admin/MentorshipPayouts";
+import { PromoCodeAnalytics } from "@/components/admin/PromoCodeAnalytics";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
