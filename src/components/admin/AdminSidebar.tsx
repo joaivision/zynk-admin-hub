@@ -19,12 +19,16 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { adminMenu } from "@/lib/admin-menu";
+import { Badge } from "@/components/ui/badge";
+import { filterMenuForRole } from "@/lib/admin-roles";
+import { useAdminAuth } from "@/lib/admin-auth";
 import logo from "@/assets/zynking-logo.png";
 
 export function AdminSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const currentSlug = pathname.replace(/^\/admin\/?/, "");
+  const { roleId, access } = useAdminAuth();
+  const menu = filterMenuForRole(roleId);
 
   const isActive = (slug: string) =>
     slug === "" ? pathname === "/admin" || pathname === "/admin/" : currentSlug === slug;
@@ -47,16 +51,13 @@ export function AdminSidebar() {
           <SidebarGroupLabel>Platform</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {adminMenu.map((group) => {
+              {menu.map((group) => {
                 const Icon = group.icon;
                 if (!group.items) {
                   return (
                     <SidebarMenuItem key={group.slug}>
                       <SidebarMenuButton asChild isActive={isActive(group.slug)}>
-                        <Link
-                          to="/admin/$"
-                          params={{ _splat: group.slug }}
-                        >
+                        <Link to="/admin/$" params={{ _splat: group.slug }}>
                           <Icon className="h-4 w-4" />
                           <span>{group.title}</span>
                         </Link>
@@ -81,21 +82,21 @@ export function AdminSidebar() {
                       </CollapsibleTrigger>
                       <CollapsibleContent>
                         <SidebarMenuSub>
-                          {group.items.map((item) => (
-                            <SidebarMenuSubItem key={item.slug}>
-                              <SidebarMenuSubButton
-                                asChild
-                                isActive={isActive(item.slug)}
-                              >
-                                <Link
-                                  to="/admin/$"
-                                  params={{ _splat: item.slug }}
-                                >
-                                  {item.title}
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          ))}
+                          {group.items.map((item) => {
+                            const a = access(item.slug);
+                            return (
+                              <SidebarMenuSubItem key={item.slug}>
+                                <SidebarMenuSubButton asChild isActive={isActive(item.slug)}>
+                                  <Link to="/admin/$" params={{ _splat: item.slug }}>
+                                    <span className="flex-1 truncate">{item.title}</span>
+                                    {a === "view" && (
+                                      <Badge variant="outline" className="ml-1 h-4 px-1 text-[9px] font-normal">RO</Badge>
+                                    )}
+                                  </Link>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            );
+                          })}
                         </SidebarMenuSub>
                       </CollapsibleContent>
                     </SidebarMenuItem>
