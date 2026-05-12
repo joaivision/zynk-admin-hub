@@ -50,6 +50,7 @@ import { CreateAdminAccounts } from "@/components/admin/CreateAdminAccounts";
 import { RolesPermissions } from "@/components/admin/RolesPermissions";
 import { AdminTwoFactor } from "@/components/admin/AdminTwoFactor";
 import { AdminActivityLogs } from "@/components/admin/AdminActivityLogs";
+import { AccessGate } from "@/components/admin/AccessGate";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
@@ -58,7 +59,14 @@ export const Route = createFileRoute("/admin/$")({
 function AdminGenericPage() {
   const { _splat } = Route.useParams();
   const slug = _splat ?? "";
+  return (
+    <AccessGate slug={slug}>
+      <PageContent slug={slug} />
+    </AccessGate>
+  );
+}
 
+function PageContent({ slug }: { slug: string }) {
   if (slug === "settings/country") return <CountryManagement />;
   if (slug === "settings/currency") return <CurrencyManagement />;
   if (slug === "settings/language") return <LanguageManagement />;
