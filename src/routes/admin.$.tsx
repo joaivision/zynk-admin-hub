@@ -51,6 +51,12 @@ import { RolesPermissions } from "@/components/admin/RolesPermissions";
 import { AdminTwoFactor } from "@/components/admin/AdminTwoFactor";
 import { AdminActivityLogs } from "@/components/admin/AdminActivityLogs";
 import { AccessGate } from "@/components/admin/AccessGate";
+import { InvestorDirectory } from "@/components/admin/InvestorDirectory";
+import { InvestorAccreditation } from "@/components/admin/InvestorAccreditation";
+import { InvestorClub } from "@/components/admin/InvestorClub";
+import { InvestorDealFlow } from "@/components/admin/InvestorDealFlow";
+import { InvestorSyndicates } from "@/components/admin/InvestorSyndicates";
+import { InvestorPortfolio } from "@/components/admin/InvestorPortfolio";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
