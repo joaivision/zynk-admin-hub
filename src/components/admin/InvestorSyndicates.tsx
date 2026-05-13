@@ -197,7 +197,7 @@ export function InvestorSyndicates() {
             <Card><CardHeader><CardTitle className="text-sm flex items-center gap-2"><Lock className="h-4 w-4" />Investor caps & limits</CardTitle></CardHeader><CardContent className="text-xs space-y-2 text-muted-foreground">
               <p>SEC Reg D 506(b): max 35 non-accredited investors per SPV.</p>
               <p>SEC Reg D 506(c): unlimited accredited only — general solicitation OK.</p>
-              <p>EU AIFMD: SPV with > €100M AUM triggers full AIFM authorization.</p>
+              <p>EU AIFMD: SPV with &gt; €100M AUM triggers full AIFM authorization.</p>
               <p>UAE ADGM: max 50 investors per SPV (private placement exemption).</p>
             </CardContent></Card>
             <Card><CardHeader><CardTitle className="text-sm flex items-center gap-2"><FileSignature className="h-4 w-4" />Document templates</CardTitle></CardHeader><CardContent className="text-xs space-y-2">
