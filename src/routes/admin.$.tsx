@@ -51,6 +51,12 @@ import { RolesPermissions } from "@/components/admin/RolesPermissions";
 import { AdminTwoFactor } from "@/components/admin/AdminTwoFactor";
 import { AdminActivityLogs } from "@/components/admin/AdminActivityLogs";
 import { AccessGate } from "@/components/admin/AccessGate";
+import { InvestorDirectory } from "@/components/admin/InvestorDirectory";
+import { InvestorAccreditation } from "@/components/admin/InvestorAccreditation";
+import { InvestorClub } from "@/components/admin/InvestorClub";
+import { InvestorDealFlow } from "@/components/admin/InvestorDealFlow";
+import { InvestorSyndicates } from "@/components/admin/InvestorSyndicates";
+import { InvestorPortfolio } from "@/components/admin/InvestorPortfolio";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
@@ -112,6 +118,12 @@ function PageContent({ slug }: { slug: string }) {
   if (slug === "settings/domains") return <DomainsDNS />;
   if (slug === "settings/abuse-rules") return <AbuseRules />;
   if (slug === "settings/seo") return <SeoMetadata />;
+  if (slug === "investors/directory") return <InvestorDirectory />;
+  if (slug === "investors/accreditation") return <InvestorAccreditation />;
+  if (slug === "investors/club") return <InvestorClub />;
+  if (slug === "investors/deal-flow") return <InvestorDealFlow />;
+  if (slug === "investors/syndicates") return <InvestorSyndicates />;
+  if (slug === "investors/portfolio") return <InvestorPortfolio />;
 
   const found = findPage(slug);
 
