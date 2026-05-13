@@ -118,6 +118,12 @@ function PageContent({ slug }: { slug: string }) {
   if (slug === "settings/domains") return <DomainsDNS />;
   if (slug === "settings/abuse-rules") return <AbuseRules />;
   if (slug === "settings/seo") return <SeoMetadata />;
+  if (slug === "investors/directory") return <InvestorDirectory />;
+  if (slug === "investors/accreditation") return <InvestorAccreditation />;
+  if (slug === "investors/club") return <InvestorClub />;
+  if (slug === "investors/deal-flow") return <InvestorDealFlow />;
+  if (slug === "investors/syndicates") return <InvestorSyndicates />;
+  if (slug === "investors/portfolio") return <InvestorPortfolio />;
 
   const found = findPage(slug);
 
