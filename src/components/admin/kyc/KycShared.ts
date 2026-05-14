@@ -72,16 +72,22 @@ export const REJECTION_CODES = [
   "AGE_BELOW_MIN",
 ] as const;
 
-import { create } from "zustand";
+import { useSyncExternalStore } from "react";
 
-type Store = {
-  records: KycRecord[];
-  setRecords: (r: KycRecord[]) => void;
-  update: (id: string, patch: Partial<KycRecord>) => void;
+let _records: KycRecord[] = seedKyc;
+const _listeners = new Set<() => void>();
+const _emit = () => _listeners.forEach((l) => l());
+
+export const kycStore = {
+  get: () => _records,
+  setAll: (r: KycRecord[]) => { _records = r; _emit(); },
+  update: (id: string, patch: Partial<KycRecord>) => {
+    _records = _records.map((r) => (r.id === id ? { ...r, ...patch } : r));
+    _emit();
+  },
+  subscribe: (l: () => void) => { _listeners.add(l); return () => { _listeners.delete(l); }; },
 };
 
-export const useKycStore = create<Store>((set) => ({
-  records: seedKyc,
-  setRecords: (r) => set({ records: r }),
-  update: (id, patch) => set((s) => ({ records: s.records.map((r) => r.id === id ? { ...r, ...patch } : r) })),
-}));
+export function useKycRecords() {
+  return useSyncExternalStore(kycStore.subscribe, kycStore.get, kycStore.get);
+}
