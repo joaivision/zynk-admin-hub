@@ -77,7 +77,7 @@ export function KycQueue() {
                   <td className="px-4 py-3 text-xs text-muted-foreground">{r.reviewer ?? "—"}</td>
                   <td className="px-4 py-3 text-right space-x-1">
                     {r.state === "submitted" && <Button size="sm" onClick={() => claim(r.id)}>Claim</Button>}
-                    <Button size="sm" variant="outline" asChild><Link to="/admin/$" params={{ _splat: "kyc/review" }} search={{ id: r.id } as any}>Open</Link></Button>
+                    <Button size="sm" variant="outline" asChild><Link to="/admin/$" params={{ _splat: "kyc/review" }}>Open</Link></Button>
                   </td>
                 </tr>
               ))}
