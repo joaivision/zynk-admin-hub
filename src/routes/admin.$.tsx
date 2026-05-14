@@ -57,6 +57,15 @@ import { InvestorClub } from "@/components/admin/InvestorClub";
 import { InvestorDealFlow } from "@/components/admin/InvestorDealFlow";
 import { InvestorSyndicates } from "@/components/admin/InvestorSyndicates";
 import { InvestorPortfolio } from "@/components/admin/InvestorPortfolio";
+import { SignupFlowConfig } from "@/components/admin/kyc/SignupFlowConfig";
+import { SignupMethods } from "@/components/admin/kyc/SignupMethods";
+import { EmailVerification } from "@/components/admin/kyc/EmailVerification";
+import { PhoneVerification } from "@/components/admin/kyc/PhoneVerification";
+import { KycQueue } from "@/components/admin/kyc/KycQueue";
+import { DocumentReview } from "@/components/admin/kyc/DocumentReview";
+import { ApproveRejectKyc } from "@/components/admin/kyc/ApproveRejectKyc";
+import { KycStatusPerUser } from "@/components/admin/kyc/KycStatusPerUser";
+import { RejectionResubmission } from "@/components/admin/kyc/RejectionResubmission";
 
 export const Route = createFileRoute("/admin/$")({
   component: AdminGenericPage,
@@ -124,6 +133,15 @@ function PageContent({ slug }: { slug: string }) {
   if (slug === "investors/deal-flow") return <InvestorDealFlow />;
   if (slug === "investors/syndicates") return <InvestorSyndicates />;
   if (slug === "investors/portfolio") return <InvestorPortfolio />;
+  if (slug === "kyc/signup-flow") return <SignupFlowConfig />;
+  if (slug === "kyc/signup-methods") return <SignupMethods />;
+  if (slug === "kyc/email-verification") return <EmailVerification />;
+  if (slug === "kyc/phone-verification") return <PhoneVerification />;
+  if (slug === "kyc/queue") return <KycQueue />;
+  if (slug === "kyc/documents") return <DocumentReview />;
+  if (slug === "kyc/review") return <ApproveRejectKyc />;
+  if (slug === "kyc/status") return <KycStatusPerUser />;
+  if (slug === "kyc/rejections") return <RejectionResubmission />;
 
   const found = findPage(slug);
 
